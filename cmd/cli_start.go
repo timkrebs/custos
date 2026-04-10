@@ -4,7 +4,7 @@ import (
 	cli "github.com/timkrebs/gocli"
 )
 
-type CliStartCmd struct{ Ui cli.Ui }
+type CliStartCmd struct{ UI cli.Ui }
 
 func (c *CliStartCmd) Name() string     { return "test" }
 func (c *CliStartCmd) Synopsis() string { return "Run vaultspec tests" }
@@ -37,7 +37,7 @@ func (c *CliStartCmd) Run(args []string) int {
 	//fs.BoolVar(verbose, "v", false, "Show detailed evaluation trace per test")
 	//
 	//if err := fs.Parse(args); err != nil {
-	//	c.Ui.Error("Error parsing flags: " + err.Error())
+	//	c.UI.Error("Error parsing flags: " + err.Error())
 	//	return 1
 	//}
 	return 0

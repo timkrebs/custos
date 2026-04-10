@@ -32,7 +32,7 @@ func Run() {
 		//"scan":     func() (cli.Command, error) { return nil, nil },
 		//"init":     func() (cli.Command, error) { return nil, nil },
 		//"validate": func() (cli.Command, error) { return nil, nil },
-		"version": func() (cli.Command, error) { return &VersionCmd{Ui: ui}, nil },
+		"version": func() (cli.Command, error) { return &VersionCmd{UI: ui}, nil },
 	}
 
 	exitStatus, err := c.Run()
