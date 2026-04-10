@@ -1,0 +1,74 @@
+name: Bug Report
+description: Report a bug in vaultspec
+title: "[bug] "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: A clear description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Create a policy file with ...
+        2. Create a spec file with ...
+        3. Run `vaultspec test -f ...`
+        4. See error ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened. Include any error output.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: vaultspec version
+      description: Output of `vaultspec version`
+      placeholder: "v0.1.0 (abc1234, clean, 2026-04-08T12:00:00Z)"
+    validations:
+      required: true
+
+  - type: input
+    id: go-version
+    attributes:
+      label: Go version
+      description: Output of `go version`
+      placeholder: "go1.24.4 darwin/arm64"
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "macOS 15.3 / Ubuntu 24.04 / Windows 11 (WSL2)"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Attach policy/spec files, logs, or screenshots if helpful.
