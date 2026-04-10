@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	binaryName := "infragraph"
+	binaryName := "vaultspec-test"
 	if runtime.GOOS == "windows" {
 		binaryName += ".exe"
 	}

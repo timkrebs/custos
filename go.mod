@@ -2,6 +2,8 @@ module github.com/timkrebs/vaultspec
 
 go 1.24.4
 
+require github.com/timkrebs/gocli v1.2.0
+
 require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
@@ -21,7 +23,6 @@ require (
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
-	github.com/timkrebs/gocli v1.2.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 )
