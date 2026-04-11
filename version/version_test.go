@@ -1,5 +1,4 @@
 package version
-package version
 
 import (
 	"encoding/json"
