@@ -7,16 +7,16 @@ import (
 
 	cli "github.com/timkrebs/gocli"
 
-	"github.com/timkrebs/vaultspec/version"
+	"github.com/timkrebs/custos/version"
 )
 
-// VersionCmd implements `vaultspec version`.
+// VersionCmd implements `custos version`.
 type VersionCmd struct{ UI cli.Ui }
 
 func (c *VersionCmd) Name() string     { return "version" }
 func (c *VersionCmd) Synopsis() string { return "Print version information" }
 func (c *VersionCmd) Help() string {
-	return `Usage: vaultspec version [options]
+	return `Usage: custos version [options]
 
 Print the version and build information.
 

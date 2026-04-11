@@ -78,4 +78,4 @@ jobs:
         run: make build
 
       - name: Verify binary runs
-        run: ./bin/vaultspec version
+        run: ./bin/custos version

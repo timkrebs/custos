@@ -7,7 +7,7 @@ before:
 
 builds:
   - main: .
-    binary: vaultspec
+    binary: custos
     env:
       - CGO_ENABLED=0
     goos:
@@ -19,10 +19,10 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/timkrebs/vaultspec/version.Version={{.Version}}
-      - -X github.com/timkrebs/vaultspec/version.GitCommit={{.Commit}}
-      - -X github.com/timkrebs/vaultspec/version.GitTreeState=clean
-      - -X github.com/timkrebs/vaultspec/version.BuildDate={{.Date}}
+      - -X github.com/timkrebs/custos/version.Version={{.Version}}
+      - -X github.com/timkrebs/custos/version.GitCommit={{.Commit}}
+      - -X github.com/timkrebs/custos/version.GitTreeState=clean
+      - -X github.com/timkrebs/custos/version.BuildDate={{.Date}}
 
 archives:
   - format: tar.gz
@@ -49,7 +49,7 @@ changelog:
 release:
   github:
     owner: timkrebs
-    name: vaultspec
+    name: custos
   draft: false
   prerelease: auto
   name_template: "v{{.Version}}"

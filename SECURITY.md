@@ -12,7 +12,7 @@
 
 Instead, please report them responsibly by emailing:
 
-**security@vaultspec.dev**
+**security@custos.dev**
 
 Include the following in your report:
 
@@ -35,7 +35,7 @@ publicly.
 
 The following are in scope:
 
-- The `vaultspec` CLI binary
+- The `custos` CLI binary
 - Policy evaluation engine (offline and online)
 - Test spec parsing and validation
 

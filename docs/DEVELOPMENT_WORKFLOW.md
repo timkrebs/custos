@@ -1,7 +1,7 @@
 # Development Workflow
 
 This guide walks through the full lifecycle of working on a GitHub issue in
-vaultspec — from picking up an issue to getting your code merged into `main`.
+custos — from picking up an issue to getting your code merged into `main`.
 
 We use **issue #1** ("Fix 'infragraph' references throughout codebase") as a
 concrete example throughout.
@@ -65,9 +65,9 @@ git checkout -b fix/1-infragraph-references
 
 ```bash
 # Edit the files
-# cmd/cli.go         — change "infragraph" to "vaultspec"
-# main_test.go       — change "infragraph" to "vaultspec"
-# version/version.go — change "InfraGraph" to "vaultspec" (already done)
+# cmd/cli.go         — change "infragraph" to "custos"
+# main_test.go       — change "infragraph" to "custos"
+# version/version.go — change "InfraGraph" to "custos" (already done)
 ```
 
 ### 4. Verify locally before committing
@@ -83,7 +83,7 @@ make test
 
 # Build the binary and verify it runs
 make build
-./bin/vaultspec version
+./bin/custos version
 ```
 
 **Do not push until `make audit` and `make test` both pass.**
@@ -97,7 +97,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) style:
 git add cmd/cli.go main_test.go version/version.go
 
 # Commit with a descriptive message referencing the issue
-git commit -m "fix(cli): replace infragraph references with vaultspec
+git commit -m "fix(cli): replace infragraph references with custos
 
 The CLI binary name, test helpers, and version string all still
 referenced 'infragraph' from the original project scaffold. This
@@ -126,9 +126,9 @@ git push -u origin fix/1-infragraph-references
 
 ```bash
 gh pr create \
-  --title "fix(cli): replace infragraph references with vaultspec" \
+  --title "fix(cli): replace infragraph references with custos" \
   --body "## Summary
-- Rename all 'infragraph' references to 'vaultspec' in CLI init, test binary name, and version string
+- Rename all 'infragraph' references to 'custos' in CLI init, test binary name, and version string
 
 ## Related issues
 Fixes #1
@@ -136,7 +136,7 @@ Fixes #1
 ## Test plan
 - [x] \`make audit\` passes
 - [x] \`make test\` passes
-- [x] \`./bin/vaultspec version\` shows 'vaultspec' not 'infragraph'" \
+- [x] \`./bin/custos version\` shows 'custos' not 'infragraph'" \
   --milestone "Sprint 1 - Foundation" \
   --label "bug,sprint:1,size:S,area:cli"
 ```
@@ -164,7 +164,7 @@ CI Pipeline
 |-----|---------------|
 | **Test** | `make test` — unit tests with race detector |
 | **Audit** | `gofmt`, `go vet`, `staticcheck`, `govulncheck`, `go.mod` tidy |
-| **Build** | `make build` + `./bin/vaultspec version` |
+| **Build** | `make build` + `./bin/custos version` |
 
 ### 9. Code review
 

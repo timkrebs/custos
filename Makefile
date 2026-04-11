@@ -1,6 +1,6 @@
 
 main_package_path = .
-binary_name = vaultspec
+binary_name = custos
 
 # Version injection — mirrors GoReleaser ldflags.
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.1.0-dev")
@@ -8,10 +8,10 @@ GIT_COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 GIT_TREE_STATE ?= $(shell test -z "$(shell git status --porcelain 2>/dev/null)" && echo "clean" || echo "dirty")
 BUILD_DATE ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS = -s -w \
-	-X github.com/timkrebs/vaultspec/version.Version=$(VERSION) \
-	-X github.com/timkrebs/vaultspec/version.GitCommit=$(GIT_COMMIT) \
-	-X github.com/timkrebs/vaultspec/version.GitTreeState=$(GIT_TREE_STATE) \
-	-X github.com/timkrebs/vaultspec/version.BuildDate=$(BUILD_DATE)
+	-X github.com/timkrebs/custos/version.Version=$(VERSION) \
+	-X github.com/timkrebs/custos/version.GitCommit=$(GIT_COMMIT) \
+	-X github.com/timkrebs/custos/version.GitTreeState=$(GIT_TREE_STATE) \
+	-X github.com/timkrebs/custos/version.BuildDate=$(BUILD_DATE)
 
 # ==================================================================================== #
 # HELPERS

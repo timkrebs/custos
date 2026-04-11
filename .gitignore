@@ -38,8 +38,8 @@ vendor/
 *.key
 
 # Build / release artifacts
-/vaultspec
-/vaultspec-*
+/custos
+/custos-*
 
 # Local scratch
 scratch/

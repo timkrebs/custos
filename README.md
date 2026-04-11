@@ -1,13 +1,13 @@
-# vaultspec
+# Custos
 
 **The missing `terraform plan` for HashiCorp Vault policies.**
 
-vaultspec is a CLI tool that lets you write test specifications for your Vault ACL policies, run them offline or against a live Vault instance, and catch misconfigurations, overprivileged access, and policy conflicts — all before they reach production.
+custos is a CLI tool that lets you write test specifications for your Vault ACL policies, run them offline or against a live Vault instance, and catch misconfigurations, overprivileged access, and policy conflicts — all before they reach production.
 
 ![image](docs/assets/vault_sentinel_cli_architecture.svg)
 
 ```
-$ vaultspec test -f payment-svc.spec.yaml
+$ custos test -f payment-svc.spec.yaml
 
   payment-service-policies
 
@@ -38,7 +38,7 @@ This creates real problems:
 - **No security analysis** — wildcard paths, sudo leaks, and policy escalation vectors hide in plain sight
 - **No CI integration** — Terraform can plan infrastructure changes, but there is no equivalent for Vault ACL policies
 
-vaultspec fills this gap.
+custos fills this gap.
 
 ## Features
 
@@ -47,7 +47,7 @@ vaultspec fills this gap.
 Parse `.hcl` policy files locally, build the same evaluation tree Vault uses internally, and test assertions without any network access. Run policy tests in CI, in air-gapped environments, or on a laptop during development.
 
 ```bash
-vaultspec test -f myapp.spec.yaml
+custos test -f myapp.spec.yaml
 ```
 
 ### Online verification against live Vault
@@ -55,7 +55,7 @@ vaultspec test -f myapp.spec.yaml
 Connect to a running Vault instance and use `sys/capabilities` to verify actual token and entity permissions. Catches things the offline evaluator cannot: Sentinel policy effects, identity group inheritance, namespace chroot behavior, and response wrapping constraints.
 
 ```bash
-vaultspec test -f myapp.spec.yaml --vault-addr=$VAULT_ADDR --vault-token=$VAULT_TOKEN
+custos test -f myapp.spec.yaml --vault-addr=$VAULT_ADDR --vault-token=$VAULT_TOKEN
 ```
 
 ### Security scanning
@@ -63,7 +63,7 @@ vaultspec test -f myapp.spec.yaml --vault-addr=$VAULT_ADDR --vault-token=$VAULT_
 Analyze policies for dangerous patterns without writing any test spec. Detects overprivileged access, wildcard abuse, policy escalation vectors, and conflicting deny/allow rules.
 
 ```bash
-vaultspec scan policies/*.hcl
+custos scan policies/*.hcl
 ```
 
 ### Policy composition
@@ -82,8 +82,8 @@ policies:
 JUnit XML for Jenkins/GitLab, JSON for custom tooling, and colored terminal output for humans.
 
 ```bash
-vaultspec test -f myapp.spec.yaml --format=junit > results.xml
-vaultspec test -f myapp.spec.yaml --format=json > results.json
+custos test -f myapp.spec.yaml --format=junit > results.xml
+custos test -f myapp.spec.yaml --format=json > results.json
 ```
 
 ## Installation
@@ -91,17 +91,17 @@ vaultspec test -f myapp.spec.yaml --format=json > results.json
 ### From source (requires Go 1.22+)
 
 ```bash
-go install github.com/timkrebs/vaultspec/cmd/vaultspec@latest
+go install github.com/timkrebs/custos/cmd/custos@latest
 ```
 
 ### From release binaries
 
-Download the latest release for your platform from the [Releases](https://github.com/timkrebs/vaultspec/releases) page.
+Download the latest release for your platform from the [Releases](https://github.com/timkrebs/custos/releases) page.
 
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew install timkrebs/tap/vaultspec
+brew install timkrebs/tap/custos
 ```
 
 ## Quick start
@@ -214,7 +214,7 @@ analyze:
 ### 3. Run tests
 
 ```bash
-$ vaultspec test -f payment-svc.spec.yaml
+$ custos test -f payment-svc.spec.yaml
 ```
 
 ### 4. Add to CI pipeline
@@ -232,11 +232,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install vaultspec
-        run: go install github.com/timkrebs/vaultspec/cmd/vaultspec@latest
+      - name: Install custos
+        run: go install github.com/timkrebs/custos/cmd/custos@latest
 
       - name: Run policy tests (offline)
-        run: vaultspec test -f payment-svc.spec.yaml --format=junit > results.xml
+        run: custos test -f payment-svc.spec.yaml --format=junit > results.xml
 
       - name: Publish test results
         uses: dorny/test-reporter@v1
@@ -250,10 +250,10 @@ jobs:
 ## CLI reference
 
 ```
-vaultspec — test and analyze HashiCorp Vault ACL policies
+custos — test and analyze HashiCorp Vault ACL policies
 
 Usage:
-  vaultspec <command> [flags]
+  custos <command> [flags]
 
 Commands:
   test        Run test assertions against policies (offline or online)
@@ -287,7 +287,7 @@ Flags (init):
 
 ### Offline evaluation engine
 
-vaultspec parses HCL policy files using HashiCorp's own parsing libraries and builds an in-memory policy evaluation tree. For each test assertion, it:
+custos parses HCL policy files using HashiCorp's own parsing libraries and builds an in-memory policy evaluation tree. For each test assertion, it:
 
 1. **Resolves the path** — matches the test path against all policy path rules using Vault's glob/prefix matching semantics (`*` matches any single path segment, `+` matches a path segment in newer Vault versions)
 2. **Selects the most specific match** — Vault uses a longest-prefix-match algorithm; exact paths beat globs, globs beat prefixes
@@ -299,7 +299,7 @@ This mirrors Vault's actual evaluation order as documented in the [Vault ACL pol
 
 ### Online verification
 
-When `--vault-addr` is provided, vaultspec switches to online mode and uses the Vault API:
+When `--vault-addr` is provided, custos switches to online mode and uses the Vault API:
 
 - `POST sys/capabilities` — evaluate capabilities for a specific token against a path
 - `POST sys/capabilities-self` — evaluate capabilities for the calling token
@@ -324,9 +324,9 @@ The `scan` command (and the `analyze` section in test specs) performs static ana
 ## Project structure
 
 ```
-vaultspec/
+custos/
 ├── cmd/
-│   └── vaultspec/
+│   └── custos/
 │       └── main.go                 # CLI entrypoint (cobra)
 ├── pkg/
 │   ├── parser/
@@ -362,7 +362,7 @@ vaultspec/
 │       └── composed.spec.yaml
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                  # vaultspec's own CI
+│       └── ci.yml                  # custos's own CI
 ├── .goreleaser.yml                 # Release automation
 ├── LICENSE                         # MPL-2.0
 ├── README.md
@@ -388,20 +388,20 @@ vaultspec/
 - [ ] Online mode via `sys/capabilities`
 - [ ] JUnit XML reporter
 - [ ] JSON reporter
-- [ ] Security scan (`vaultspec scan`)
+- [ ] Security scan (`custos scan`)
 - [ ] Overprivilege detection
 - [ ] Policy conflict detection
 - [ ] Path coverage reporting
-- [ ] `vaultspec init` — generate test skeleton from existing policies
+- [ ] `custos init` — generate test skeleton from existing policies
 - [ ] Namespace-aware evaluation (Vault Enterprise)
 - [ ] Sentinel policy integration (Vault Enterprise)
 - [ ] Vault dev server integration for hybrid offline/online testing
-- [ ] GitHub Action (`uses: timkrebs/vaultspec-action@v1`)
+- [ ] GitHub Action (`uses: timkrebs/custos-action@v1`)
 - [ ] Grafana dashboard template for scan results over time
 
 ## Comparison
 
-| Feature | vaultspec | Ned's vault-policy-testing | Manual `vault token` testing |
+| Feature | custos | Ned's vault-policy-testing | Manual `vault token` testing |
 |---|---|---|---|
 | Offline testing (no Vault) | OK | ✗ | ✗ |
 | Online verification | OK | OK | OK |
@@ -421,15 +421,15 @@ Contributions are welcome. Please open an issue to discuss your idea before subm
 
 ```bash
 # Clone and build
-git clone https://github.com/timkrebs/vaultspec.git
-cd vaultspec
-go build ./cmd/vaultspec/
+git clone https://github.com/timkrebs/custos.git
+cd custos
+go build ./cmd/custos/
 
 # Run tests
 go test ./...
 
 # Run with example policies
-go run ./cmd/vaultspec/ test -f testdata/specs/payment-svc.spec.yaml
+go run ./cmd/custos/ test -f testdata/specs/payment-svc.spec.yaml
 ```
 
 ## License
@@ -438,4 +438,4 @@ MPL-2.0 — the same license used by HashiCorp's open-source tools.
 
 ---
 
-*vaultspec is an independent open-source project and is not affiliated with or endorsed by HashiCorp or IBM.*
+*custos is an independent open-source project and is not affiliated with or endorsed by HashiCorp or IBM.*

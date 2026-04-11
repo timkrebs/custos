@@ -1,6 +1,6 @@
 # Maintainers
 
-This file lists the maintainers of the vaultspec project. Maintainers are
+This file lists the maintainers of the custos project. Maintainers are
 responsible for reviewing and merging pull requests, triaging issues, and
 cutting releases.
 
