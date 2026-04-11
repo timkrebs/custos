@@ -2,7 +2,7 @@
 
 **The missing `terraform plan` for HashiCorp Vault policies.**
 
-custos is a CLI tool that lets you write test specifications for your Vault ACL policies, run them offline or against a live Vault instance, and catch misconfigurations, overprivileged access, and policy conflicts — all before they reach production.
+custos (lat. guardian) is a CLI tool that lets you write test specifications for your Vault ACL policies, run them offline or against a live Vault instance, and catch misconfigurations, overprivileged access, and policy conflicts — all before they reach production.
 
 ![image](docs/assets/vault_sentinel_cli_architecture.svg)
 

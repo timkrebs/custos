@@ -3,6 +3,8 @@ package parser
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestParsePolicyFile(t *testing.T) {
@@ -113,6 +115,48 @@ func TestParsePolicy_MalformedHCL(t *testing.T) {
 	_, err := ParsePolicy("bad.hcl", []byte(`path "x" { capabilities = `))
 	if err == nil {
 		t.Fatal("expected error for malformed HCL")
+	}
+}
+
+func TestParsePolicy_InvalidStructure(t *testing.T) {
+	// Valid HCL but not a valid policy — missing block label triggers DecodeBody error
+	src := []byte(`not_a_path_block = "hello"`)
+	_, err := ParsePolicy("invalid.hcl", src)
+	if err == nil {
+		t.Fatal("expected error for invalid policy structure")
+	}
+}
+
+func TestParsePolicy_UnknownAttribute(t *testing.T) {
+	src := []byte(`
+path "secret/foo" {
+  capabilities     = ["read"]
+  unknown_field    = "surprise"
+}
+`)
+	p, err := ParsePolicy("unknown.hcl", src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(p.Paths) != 1 {
+		t.Fatalf("got %d paths, want 1", len(p.Paths))
+	}
+	if p.Paths[0].Path != "secret/foo" {
+		t.Errorf("path = %q, want %q", p.Paths[0].Path, "secret/foo")
+	}
+}
+
+func TestDecodeParamMap_Null(t *testing.T) {
+	result := decodeParamMap(cty.NilVal)
+	if result != nil {
+		t.Errorf("expected nil for null value, got %v", result)
+	}
+}
+
+func TestDecodeStringList_Null(t *testing.T) {
+	result := decodeStringList(cty.NilVal)
+	if result != nil {
+		t.Errorf("expected nil for null value, got %v", result)
 	}
 }
 
