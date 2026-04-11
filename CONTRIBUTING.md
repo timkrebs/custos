@@ -1,10 +1,10 @@
-# Contributing to vaultspec
+# Contributing to custos
 
-Thanks for your interest in contributing to **vaultspec**! This document describes
+Thanks for your interest in contributing to **custos**! This document describes
 how to set up a development environment, the conventions used in this repository,
 and how to get your changes reviewed and merged.
 
-vaultspec is an independent open-source project. It is **not** affiliated with or
+custos is an independent open-source project. It is **not** affiliated with or
 endorsed by HashiCorp or IBM.
 
 ---
@@ -29,17 +29,17 @@ endorsed by HashiCorp or IBM.
 ## Code of Conduct
 
 This project and everyone participating in it is governed by the
-[vaultspec Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected
+[custos Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected
 to uphold this code. Please report unacceptable behavior to the maintainers listed
 in [MAINTAINERS.md](MAINTAINERS.md).
 
 ## Ways to contribute
 
-There are many ways to contribute to vaultspec, and not all of them involve writing
+There are many ways to contribute to custos, and not all of them involve writing
 code:
 
-- **Report bugs** you encounter while using vaultspec
-- **Suggest features** that would make vaultspec more useful to you or your team
+- **Report bugs** you encounter while using custos
+- **Suggest features** that would make custos more useful to you or your team
 - **Improve documentation** — fix typos, clarify explanations, add examples
 - **Write tests** that increase coverage of existing functionality
 - **Triage issues** by reproducing bugs or asking clarifying questions
@@ -47,16 +47,16 @@ code:
 - **Implement features** from the roadmap or from accepted feature requests
 
 If you are unsure where to start, look for issues labeled
-[`good first issue`](https://github.com/timkrebs/vaultspec/labels/good%20first%20issue)
-or [`help wanted`](https://github.com/timkrebs/vaultspec/labels/help%20wanted).
+[`good first issue`](https://github.com/timkrebs/custos/labels/good%20first%20issue)
+or [`help wanted`](https://github.com/timkrebs/custos/labels/help%20wanted).
 
 ## Reporting bugs
 
 Before filing a bug report:
 
 1. **Search existing issues** to avoid duplicates.
-2. **Reproduce the bug** with the latest released version of vaultspec.
-3. **Collect diagnostic information**: vaultspec version (`vaultspec version`), Go
+2. **Reproduce the bug** with the latest released version of custos.
+3. **Collect diagnostic information**: custos version (`custos version`), Go
    version (`go version`), operating system, and a minimal policy/spec file that
    reproduces the issue.
 
@@ -106,16 +106,16 @@ Optional but recommended:
 ### Cloning the repository
 
 ```bash
-git clone https://github.com/timkrebs/vaultspec.git
-cd vaultspec
+git clone https://github.com/timkrebs/custos.git
+cd custos
 go mod download
 ```
 
 ### Running for the first time
 
 ```bash
-make build           # produces ./bin/vaultspec
-./bin/vaultspec --help
+make build           # produces ./bin/custos
+./bin/custos --help
 ```
 
 ## Building and testing
@@ -125,7 +125,7 @@ prefer `make <target>` over running `go ...` directly so that local runs match C
 
 | Target | Purpose |
 |---|---|
-| `make build` | Build the `vaultspec` binary into `./bin/` |
+| `make build` | Build the `custos` binary into `./bin/` |
 | `make run` | Build and run the binary |
 | `make test` | Run the full test suite with race detector |
 | `make test/cover` | Run tests and open an HTML coverage report |
@@ -139,7 +139,7 @@ same checks and reject pull requests that fail.
 
 ### Writing tests
 
-vaultspec uses standard Go testing (`testing` package) with the race detector
+custos uses standard Go testing (`testing` package) with the race detector
 enabled in CI. We do not currently mandate a specific assertion library — match the
 style of the package you are editing.
 
@@ -220,7 +220,7 @@ constitutes acceptance of the above.
 
 ## License
 
-vaultspec is licensed under the [Mozilla Public License 2.0](LICENSE). All
+custos is licensed under the [Mozilla Public License 2.0](LICENSE). All
 contributions are accepted under the same license. If you are submitting code that
 you did not write yourself, you must ensure that the original author has licensed
 it under MPL-2.0 or a compatible license, and you must call this out in the pull

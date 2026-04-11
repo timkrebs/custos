@@ -46,7 +46,7 @@ func GetInfo() Info {
 }
 
 // HumanVersion returns a human-friendly version string, e.g.:
-// "vaultspec v0.2.0 (abc1234, clean, 2026-04-08T12:00:00Z)"
+// "custos v0.2.0 (abc1234, clean, 2026-04-08T12:00:00Z)"
 func HumanVersion() string {
 	version := Version
 
@@ -58,6 +58,6 @@ func HumanVersion() string {
 		commit = commit[:7]
 	}
 
-	return fmt.Sprintf("vaultspec v%s (%s, %s, %s)",
+	return fmt.Sprintf("custos v%s (%s, %s, %s)",
 		version, commit, GitTreeState, BuildDate)
 }

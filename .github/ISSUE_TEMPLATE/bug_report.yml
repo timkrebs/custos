@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug in vaultspec
+description: Report a bug in custos
 title: "[bug] "
 labels: [bug, needs-triage]
 body:
@@ -24,7 +24,7 @@ body:
       placeholder: |
         1. Create a policy file with ...
         2. Create a spec file with ...
-        3. Run `vaultspec test -f ...`
+        3. Run `custos test -f ...`
         4. See error ...
     validations:
       required: true
@@ -48,8 +48,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: vaultspec version
-      description: Output of `vaultspec version`
+      label: custos version
+      description: Output of `custos version`
       placeholder: "v0.1.0 (abc1234, clean, 2026-04-08T12:00:00Z)"
     validations:
       required: true

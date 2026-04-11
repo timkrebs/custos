@@ -6,7 +6,7 @@ import (
 
 	cli "github.com/timkrebs/gocli"
 
-	"github.com/timkrebs/vaultspec/version"
+	"github.com/timkrebs/custos/version"
 )
 
 func Run() {
@@ -23,7 +23,7 @@ func Run() {
 		},
 	}
 
-	c := cli.NewCLI("vaultspec", version.Version)
+	c := cli.NewCLI("custos", version.Version)
 	c.Args = os.Args[1:]
 	c.HelpWriter = os.Stdout
 

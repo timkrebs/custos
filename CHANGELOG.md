@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **vaultspec** are documented in this file.
+All notable changes to **custos** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -26,5 +26,5 @@ moved under a version header when a release is cut.
 First tagged pre-release. See the roadmap in [README.md](README.md) for the
 list of features planned for 0.1.0.
 
-[Unreleased]: https://github.com/timkrebs/vaultspec/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/timkrebs/vaultspec/releases/tag/v0.1.0
+[Unreleased]: https://github.com/timkrebs/custos/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/timkrebs/custos/releases/tag/v0.1.0

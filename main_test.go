@@ -12,13 +12,13 @@ var testBinaryPath string
 
 // TestMain builds the binary once and runs all tests against it.
 func TestMain(m *testing.M) {
-	tmpDir, err := os.MkdirTemp("", "vaultspec-test-*")
+	tmpDir, err := os.MkdirTemp("", "custos-test-*")
 	if err != nil {
 		panic("failed to create temp dir: " + err.Error())
 	}
 	defer os.RemoveAll(tmpDir)
 
-	binaryName := "vaultspec-test"
+	binaryName := "custos-test"
 	if runtime.GOOS == "windows" {
 		binaryName += ".exe"
 	}

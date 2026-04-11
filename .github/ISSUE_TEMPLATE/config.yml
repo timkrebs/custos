@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/timkrebs/vaultspec/blob/main/SECURITY.md
+    url: https://github.com/timkrebs/custos/blob/main/SECURITY.md
     about: Please report security vulnerabilities privately. Do not open a public issue.
   - name: Questions and discussions
-    url: https://github.com/timkrebs/vaultspec/discussions
+    url: https://github.com/timkrebs/custos/discussions
     about: Ask questions and discuss ideas in GitHub Discussions.

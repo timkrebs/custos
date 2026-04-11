@@ -7,9 +7,9 @@ import (
 type CliStartCmd struct{ UI cli.Ui }
 
 func (c *CliStartCmd) Name() string     { return "test" }
-func (c *CliStartCmd) Synopsis() string { return "Run vaultspec tests" }
+func (c *CliStartCmd) Synopsis() string { return "Run custos tests" }
 func (c *CliStartCmd) Help() string {
-	return `Usage: vaultspec test [options]
+	return `Usage: custos test [options]
 
   Options: 
 	-f, --file string      Path to test spec YAML file (required)
