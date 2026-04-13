@@ -3,15 +3,22 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"io"
+	"os"
 
 	cli "github.com/timkrebs/gocli"
 
 	"github.com/timkrebs/custos/pkg/evaluator"
 	"github.com/timkrebs/custos/pkg/parser"
+	"github.com/timkrebs/custos/pkg/reporter"
 	"github.com/timkrebs/custos/pkg/spec"
 )
 
-type CliStartCmd struct{ UI cli.Ui }
+// CliStartCmd implements the "custos test" command.
+type CliStartCmd struct {
+	UI     cli.Ui
+	Writer io.Writer // Output destination for the reporter. Defaults to os.Stdout.
+}
 
 func (c *CliStartCmd) Name() string     { return "test" }
 func (c *CliStartCmd) Synopsis() string { return "Run custos tests" }
@@ -68,74 +75,16 @@ func (c *CliStartCmd) Run(args []string) int {
 	// Run evaluation.
 	suite := evaluator.EvaluateSuite(policies, s)
 
-	// Print results.
-	printSuiteResult(c.UI, suite, *verbose)
+	// Report results.
+	w := c.Writer
+	if w == nil {
+		w = os.Stdout
+	}
+	rep := reporter.NewTerminal(w, *verbose)
+	rep.Report(suite)
 
 	if suite.Failed > 0 {
 		return 1
 	}
 	return 0
-}
-
-func printSuiteResult(ui cli.Ui, suite evaluator.SuiteResult, verbose bool) {
-	testCount := len(suite.Results)
-	policyCount := countPolicies(suite)
-	ui.Output(fmt.Sprintf("\n=== SUITE: %s (%d %s, %d %s)\n",
-		suite.Suite,
-		policyCount, pluralize("policy", "policies", policyCount),
-		testCount, pluralize("test", "tests", testCount),
-	))
-
-	for _, tr := range suite.Results {
-		path := tr.Test.Path
-		if tr.Pass {
-			ui.Info(fmt.Sprintf("--- PASS: %-40s (%s)", tr.Test.Name, path))
-		} else {
-			ui.Error(fmt.Sprintf("--- FAIL: %-40s (%s)", tr.Test.Name, path))
-			expected := tr.Test.Expect
-			got := "deny"
-			if tr.Result.Allowed {
-				got = "allow"
-			}
-			detail := fmt.Sprintf("         expected: %s, got: %s", expected, got)
-			if tr.Result.MatchedRule != nil {
-				detail += fmt.Sprintf(" (matched %s in %s)",
-					tr.Result.MatchedRule.RulePath,
-					tr.Result.MatchedRule.PolicyFile)
-			}
-			ui.Error(detail)
-		}
-		if verbose {
-			ui.Output(fmt.Sprintf("         %s", tr.Result.Explanation))
-		}
-	}
-
-	ui.Output("")
-	if suite.Failed > 0 {
-		ui.Error(fmt.Sprintf("=== RESULTS: %d passed, %d failed", suite.Passed, suite.Failed))
-		ui.Error("FAIL")
-	} else {
-		ui.Info(fmt.Sprintf("=== RESULTS: %d passed, %d failed", suite.Passed, suite.Failed))
-		ui.Output("ok")
-	}
-}
-
-func countPolicies(suite evaluator.SuiteResult) int {
-	seen := make(map[string]bool)
-	for _, tr := range suite.Results {
-		if tr.Result.MatchedRule != nil {
-			seen[tr.Result.MatchedRule.PolicyFile] = true
-		}
-	}
-	if len(seen) == 0 {
-		return 0
-	}
-	return len(seen)
-}
-
-func pluralize(singular, plural string, n int) string {
-	if n == 1 {
-		return singular
-	}
-	return plural
 }

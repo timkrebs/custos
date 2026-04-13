@@ -3,6 +3,7 @@ module github.com/timkrebs/custos
 go 1.24.4
 
 require (
+	github.com/fatih/color v1.18.0
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/timkrebs/gocli v1.2.0
 	github.com/zclconf/go-cty v1.16.3
@@ -18,7 +19,6 @@ require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/bgentry/speakeasy v0.2.0 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
