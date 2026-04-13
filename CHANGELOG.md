@@ -58,8 +58,22 @@ colored pass/fail results in the terminal.
   - `specs/admin.spec.yaml` — 14 tests covering admin access and boundaries
   - `specs/composed.spec.yaml` — 13 tests demonstrating multi-policy
     composition with deny-override semantics
+- **Build and release infrastructure:**
+  - `.build/build.sh` — cross-compile binaries for all 6 platforms locally.
+  - `.build/install.sh` — one-line installer that downloads, verifies
+    checksums, and installs the binary (curl-pipe-bash pattern).
+  - `.release/docker/Dockerfile` — multi-stage Docker image based on Alpine
+    with non-root user.
+  - `.release/security-scan.sh` — pre-release security scan script
+    (govulncheck, staticcheck, go vet).
+  - `.release/release-metadata.hcl` — release configuration metadata.
+  - GoReleaser enhanced with Homebrew tap automation and Docker image
+    publishing to `ghcr.io/timkrebs/custos`.
+  - Release workflow updated with Docker Buildx and GHCR login.
+- **Installation methods:** `go install`, Homebrew (`brew install
+  timkrebs/tap/custos`), release binaries, Docker
+  (`docker run ghcr.io/timkrebs/custos`), and curl installer script.
 - **CI/CD** — GitHub Actions workflows for testing, auditing, and releasing.
-  GoReleaser configuration for cross-platform builds.
 - **Project scaffolding** — `CODE_OF_CONDUCT.md`, `SECURITY.md`,
   `MAINTAINERS.md`, `CONTRIBUTING.md`, GitHub issue and PR templates,
   `CODEOWNERS`, Dependabot configuration.

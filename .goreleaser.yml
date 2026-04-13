@@ -30,6 +30,10 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"
@@ -53,3 +57,29 @@ release:
   draft: false
   prerelease: auto
   name_template: "v{{.Version}}"
+
+brews:
+  - repository:
+      owner: timkrebs
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/timkrebs/custos"
+    description: "The missing terraform plan for HashiCorp Vault policies"
+    license: "MPL-2.0"
+    test: |
+      system "#{bin}/custos", "version"
+    install: |
+      bin.install "custos"
+
+dockers:
+  - image_templates:
+      - "ghcr.io/timkrebs/custos:{{ .Version }}"
+      - "ghcr.io/timkrebs/custos:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/timkrebs/custos:latest"
+    dockerfile: .release/docker/Dockerfile
+    build_flag_templates:
+      - "--build-arg=VERSION={{.Version}}"
+      - "--build-arg=GIT_COMMIT={{.Commit}}"
+      - "--build-arg=BUILD_DATE={{.Date}}"
+    use: buildx

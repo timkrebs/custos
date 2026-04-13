@@ -88,20 +88,38 @@ custos test -f myapp.spec.yaml --format=json > results.json
 
 ## Installation
 
-### From source (requires Go 1.22+)
+### Install script (recommended)
 
 ```bash
-go install github.com/timkrebs/custos/cmd/custos@latest
+curl -sSfL https://raw.githubusercontent.com/timkrebs/custos/main/.build/install.sh | bash
 ```
 
-### From release binaries
+This downloads the latest release binary, verifies its SHA256 checksum, and installs it to `~/.local/bin`. To install to a different directory:
 
-Download the latest release for your platform from the [Releases](https://github.com/timkrebs/custos/releases) page.
+```bash
+curl -sSfL https://raw.githubusercontent.com/timkrebs/custos/main/.build/install.sh | bash -s -- -b /usr/local/bin
+```
 
 ### Homebrew (macOS/Linux)
 
 ```bash
 brew install timkrebs/tap/custos
+```
+
+### From release binaries
+
+Download the latest release for your platform from the [Releases](https://github.com/timkrebs/custos/releases) page. Archives include binaries for Linux, macOS, and Windows on amd64 and arm64.
+
+### Docker
+
+```bash
+docker run --rm -v $(pwd):/work ghcr.io/timkrebs/custos test -f /work/spec.yaml
+```
+
+### From source (requires Go 1.22+)
+
+```bash
+go install github.com/timkrebs/custos@latest
 ```
 
 ## Quick start

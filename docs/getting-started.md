@@ -20,20 +20,34 @@ Install custos and run your first policy test in under five minutes.
 
 ## Installation
 
-### From source (requires Go 1.22+)
+### Install script (recommended)
 
 ```bash
-go install github.com/timkrebs/custos/cmd/custos@latest
+curl -sSfL https://raw.githubusercontent.com/timkrebs/custos/main/.build/install.sh | bash
+```
+
+Installs the latest release to `~/.local/bin`. Use `-b /usr/local/bin` for system-wide install.
+
+### Homebrew (macOS/Linux)
+
+```bash
+brew install timkrebs/tap/custos
 ```
 
 ### From release binaries
 
 Download the latest release for your platform from the [Releases](https://github.com/timkrebs/custos/releases) page.
 
-### Homebrew (macOS/Linux)
+### Docker
 
 ```bash
-brew install timkrebs/tap/custos
+docker run --rm -v $(pwd):/work ghcr.io/timkrebs/custos test -f /work/spec.yaml
+```
+
+### From source (requires Go 1.22+)
+
+```bash
+go install github.com/timkrebs/custos@latest
 ```
 
 ---
