@@ -1,5 +1,14 @@
 # Custos
 
+[![CI](https://github.com/timkrebs/custos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/timkrebs/custos/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/timkrebs/custos)](https://goreportcard.com/report/github.com/timkrebs/custos)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/timkrebs/custos)](https://go.dev/doc/devel/release)
+[![Release](https://img.shields.io/github/v/release/timkrebs/custos)](https://github.com/timkrebs/custos/releases/latest)
+[![Go Reference](https://pkg.go.dev/badge/github.com/timkrebs/custos.svg)](https://pkg.go.dev/github.com/timkrebs/custos)
+[![License](https://img.shields.io/github/license/timkrebs/custos)](LICENSE)
+[![codecov](https://codecov.io/gh/timkrebs/custos/branch/main/graph/badge.svg)](https://codecov.io/gh/timkrebs/custos)
+
+
 **The missing `terraform plan` for HashiCorp Vault policies.**
 
 custos (lat. guardian) is a CLI tool that lets you write test specifications for your Vault ACL policies, run them offline or against a live Vault instance, and catch misconfigurations, overprivileged access, and policy conflicts — all before they reach production.
@@ -88,38 +97,20 @@ custos test -f myapp.spec.yaml --format=json > results.json
 
 ## Installation
 
-### Install script (recommended)
+### From source (requires Go 1.22+)
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/timkrebs/custos/main/.build/install.sh | bash
+go install github.com/timkrebs/custos/cmd/custos@latest
 ```
 
-This downloads the latest release binary, verifies its SHA256 checksum, and installs it to `~/.local/bin`. To install to a different directory:
+### From release binaries
 
-```bash
-curl -sSfL https://raw.githubusercontent.com/timkrebs/custos/main/.build/install.sh | bash -s -- -b /usr/local/bin
-```
+Download the latest release for your platform from the [Releases](https://github.com/timkrebs/custos/releases) page.
 
 ### Homebrew (macOS/Linux)
 
 ```bash
 brew install timkrebs/tap/custos
-```
-
-### From release binaries
-
-Download the latest release for your platform from the [Releases](https://github.com/timkrebs/custos/releases) page. Archives include binaries for Linux, macOS, and Windows on amd64 and arm64.
-
-### Docker
-
-```bash
-docker run --rm -v $(pwd):/work ghcr.io/timkrebs/custos test -f /work/spec.yaml
-```
-
-### From source (requires Go 1.22+)
-
-```bash
-go install github.com/timkrebs/custos@latest
 ```
 
 ## Quick start

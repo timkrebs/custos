@@ -27,8 +27,15 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run tests
-        run: make test
+      - name: Run tests with coverage
+        run: make coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   audit:
     name: Audit

@@ -57,6 +57,11 @@ test/cover:
 	go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
 	go tool cover -html=/tmp/coverage.out
 
+## coverage: run all tests with coverage profile (for CI / Codecov upload)
+.PHONY: coverage
+coverage:
+	go test -v -race -buildvcs -coverprofile=coverage.out -covermode=atomic ./...
+
 ## upgradeable: list direct dependencies that have upgrades available
 .PHONY: upgradeable
 upgradeable:

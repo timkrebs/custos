@@ -1,0 +1,20 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto        # maintain or improve overall coverage
+        threshold: 1%       # allow up to 1% drop before failing
+    patch:
+      default:
+        target: 70%         # new code in PRs must have at least 70% coverage
+        threshold: 5%
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: true     # only comment when coverage changes
+
+ignore:
+  - "main.go"
+  - "cmd/cli.go"
+  - "version/version.go"
