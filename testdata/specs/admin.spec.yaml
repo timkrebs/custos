@@ -1,0 +1,80 @@
+suite: "admin-policy-boundaries"
+
+policies:
+  - path: ../policies/admin.hcl
+
+tests:
+  # --- Secrets access (broad) ---
+  - name: "can read any secret"
+    path: "secret/data/any-service/config"
+    capabilities: [read]
+    expect: allow
+
+  - name: "can write secrets"
+    path: "secret/data/new-service/config"
+    capabilities: [create, update]
+    expect: allow
+
+  - name: "can delete secrets"
+    path: "secret/data/old-service/config"
+    capabilities: [delete]
+    expect: allow
+
+  - name: "can list secrets"
+    path: "secret/metadata/"
+    capabilities: [list]
+    expect: allow
+
+  # --- System backend ---
+  - name: "can access sys health"
+    path: "sys/health"
+    capabilities: [read]
+    expect: allow
+
+  - name: "can seal vault"
+    path: "sys/seal"
+    capabilities: [sudo]
+    expect: allow
+
+  - name: "can read leader status"
+    path: "sys/leader"
+    capabilities: [read]
+    expect: allow
+
+  # --- Auth management ---
+  - name: "can enable auth methods"
+    path: "auth/userpass/users/admin"
+    capabilities: [create, update]
+    expect: allow
+
+  - name: "can list auth methods"
+    path: "auth/token/accessors"
+    capabilities: [list]
+    expect: allow
+
+  # --- Policy management (escalation risk) ---
+  - name: "can create policies"
+    path: "sys/policies/acl/new-policy"
+    capabilities: [create]
+    expect: allow
+
+  - name: "can update policies"
+    path: "sys/policies/acl/existing-policy"
+    capabilities: [update]
+    expect: allow
+
+  # --- Boundaries: paths NOT covered ---
+  - name: "no access to transit engine"
+    path: "transit/encrypt/key"
+    capabilities: [update]
+    expect: deny
+
+  - name: "no access to PKI engine"
+    path: "pki/issue/cert"
+    capabilities: [create]
+    expect: deny
+
+  - name: "no access to database creds"
+    path: "database/creds/readonly"
+    capabilities: [read]
+    expect: deny
