@@ -25,10 +25,11 @@ builds:
       - -X github.com/timkrebs/custos/version.BuildDate={{.Date}}
 
 archives:
-  - formats:
-      - tar.gz
-      - zip:windows
+  - format: tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
     files:
       - LICENSE
       - README.md
