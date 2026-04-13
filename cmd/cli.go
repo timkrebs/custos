@@ -28,7 +28,7 @@ func Run() {
 	c.HelpWriter = os.Stdout
 
 	c.Commands = map[string]cli.CommandFactory{
-		//"test": func() (cli.Command, error) { return &CliStartCmd{Ui: ui}, nil },
+		"test": func() (cli.Command, error) { return &CliStartCmd{UI: ui}, nil },
 		//"scan":     func() (cli.Command, error) { return nil, nil },
 		//"init":     func() (cli.Command, error) { return nil, nil },
 		//"validate": func() (cli.Command, error) { return nil, nil },

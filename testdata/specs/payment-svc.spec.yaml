@@ -1,0 +1,55 @@
+suite: "payment-service-policies"
+
+policies:
+  - path: ../policies/payment-svc.hcl
+
+tests:
+  - name: "can read its own secrets"
+    path: "secret/data/payment-svc/db-creds"
+    capabilities: [read]
+    expect: allow
+
+  - name: "can list its own secret keys"
+    path: "secret/data/payment-svc/"
+    capabilities: [list]
+    expect: allow
+
+  - name: "cannot write to its own secrets"
+    path: "secret/data/payment-svc/db-creds"
+    capabilities: [create, update]
+    expect: deny
+
+  - name: "cannot read billing secrets"
+    path: "secret/data/billing-svc/api-key"
+    capabilities: [read]
+    expect: deny
+
+  - name: "can issue certificates"
+    path: "pki_int/issue/payment-svc"
+    capabilities: [create, update]
+    expect: allow
+
+  - name: "cannot issue certs for other services"
+    path: "pki_int/issue/billing-svc"
+    capabilities: [create, update]
+    expect: deny
+
+  - name: "can encrypt with payment key"
+    path: "transit/encrypt/payment-key"
+    capabilities: [update]
+    expect: allow
+
+  - name: "cannot access other transit keys"
+    path: "transit/encrypt/billing-key"
+    capabilities: [update]
+    expect: deny
+
+  - name: "no sys access"
+    path: "sys/seal"
+    capabilities: [sudo]
+    expect: deny
+
+  - name: "no auth method management"
+    path: "auth/token/create"
+    capabilities: [create]
+    expect: deny
