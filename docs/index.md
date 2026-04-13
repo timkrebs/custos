@@ -1,18 +1,20 @@
 ---
-title: Home
-layout: home
-nav_order: 1
+layout: default
+title: Custos
 ---
 
 # Custos
 
 **The missing `terraform plan` for HashiCorp Vault policies.**
-{: .fs-6 .fw-300 }
 
 custos (*lat. guardian*) is a CLI tool that lets you write test specifications for your Vault ACL policies, run them offline or against a live Vault instance, and catch misconfigurations, overprivileged access, and policy conflicts — all before they reach production.
 
-[Get Started]({% link getting-started.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[View on GitHub](https://github.com/timkrebs/custos){: .btn .fs-5 .mb-4 .mb-md-0 }
+[Getting Started](getting-started) |
+[CLI Reference](cli-reference) |
+[Architecture](architecture) |
+[Roadmap](roadmap) |
+[Contributing](contributing) |
+[GitHub](https://github.com/timkrebs/custos)
 
 ---
 
@@ -25,16 +27,13 @@ $ custos test -f payment-svc.spec.yaml
     OK payment service cannot read billing secrets       (secret/data/billing-svc/api-key)
     OK payment service cannot delete anything            (secret/data/payment-svc/*)
     OK payment service can issue short-lived certs       (pki_int/issue/payment-svc)
-    FAIL no access to sys backend                          (sys/seal)
-      → expected: deny, got: allow via policy "admin-legacy" (line 14)
+    FAIL no access to sys backend                        (sys/seal)
+      → expected: deny, got: allow via policy "admin-legacy"
 
   4 passed · 1 failed · 0 skipped
-
-  Security findings:
-    WARN  wildcard path "secret/*" grants [create read update delete list] in admin-legacy.hcl:8
-    WARN  sudo capability outside sys/ found in admin-legacy.hcl:14
-    INFO  policy path coverage: 5/12 paths tested (41%) — consider adding more tests
 ```
+
+---
 
 ## Why custos?
 
@@ -59,6 +58,24 @@ custos fills this gap.
 | **Policy composition** | Test the combined effect of multiple policies |
 | **CI/CD-ready output** | JUnit XML, JSON, and colored terminal output |
 
+## Quick install
+
+```bash
+# Install script (recommended)
+curl -sSfL https://raw.githubusercontent.com/timkrebs/custos/main/.build/install.sh | bash
+
+# Homebrew
+brew install timkrebs/tap/custos
+
+# Docker
+docker run --rm -v $(pwd):/work ghcr.io/timkrebs/custos test -f /work/spec.yaml
+
+# From source
+go install github.com/timkrebs/custos@latest
+```
+
+See the full [Getting Started](getting-started) guide for a complete walkthrough.
+
 ## Comparison
 
 | Feature | custos | vault-policy-testing | Manual testing |
@@ -73,4 +90,4 @@ custos fills this gap.
 
 ---
 
-custos is an independent open-source project and is not affiliated with or endorsed by HashiCorp or IBM.
+*custos is an independent open-source project licensed under [MPL-2.0](https://github.com/timkrebs/custos/blob/main/LICENSE). It is not affiliated with or endorsed by HashiCorp or IBM.*
