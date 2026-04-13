@@ -1,59 +1,52 @@
-// HashiCorp Vault-inspired color scheme for just-the-docs
-// Based on the HashiCorp Developer documentation design language
+// HashiCorp Vault-inspired LIGHT color scheme for just-the-docs
+// Uses Klavika font family throughout
 
 // ─── Brand colors ───────────────────────────────────────
 $vault-yellow:       #FFD814;
-$vault-yellow-light: #FFEC6E;
 $vault-yellow-dark:  #C9A600;
-$hc-purple:          #7B61FF;
-$hc-purple-light:    #9B87F5;
+$hc-purple:          #6B57D2;
+$hc-purple-dark:     #5040A0;
+$hc-black:           #1D1E25;
 
-// ─── Dark backgrounds ───────────────────────────────────
-$bg-darkest:   #0C0C0F;
-$bg-dark:      #101014;
-$bg-sidebar:   #131318;
-$bg-content:   #16161B;
-$bg-code:      #1C1C23;
-$bg-hover:     #22222B;
-$bg-subtle:    #2A2A35;
+// ─── Light backgrounds ──────────────────────────────────
+$bg-white:     #FFFFFF;
+$bg-light:     #F7F8FA;
+$bg-sidebar:   #F2F3F6;
+$bg-code:      #F4F4F8;
+$bg-hover:     #ECEDF2;
+$bg-subtle:    #E4E5EB;
 
 // ─── Text colors ────────────────────────────────────────
-$text-primary:   #E2E2E8;
-$text-secondary: #A3A3B0;
-$text-muted:     #6B6B7B;
+$text-primary:   #1D1E25;
+$text-secondary: #525566;
+$text-muted:     #8B8FA2;
 
 // ─── Borders ────────────────────────────────────────────
-$border-color:  #2A2A35;
-$border-subtle: #222230;
-
-// ─── Functional colors ──────────────────────────────────
-$green:  #2EB67D;
-$red:    #E45858;
-$orange: #E89B3E;
-$blue:   #4C9AFF;
+$border-color:  #DDDEE3;
+$border-subtle: #E8E9EE;
 
 // ═══════════════════════════════════════════════════════════
 // just-the-docs color scheme overrides
 // ═══════════════════════════════════════════════════════════
 
-$body-background-color:        $bg-content;
+$body-background-color:        $bg-white;
 $sidebar-color:                $bg-sidebar;
 $body-text-color:              $text-primary;
-$body-heading-color:           #FFFFFF;
+$body-heading-color:           $hc-black;
 $nav-child-link-color:         $text-secondary;
 $search-result-preview-color:  $text-secondary;
 
 $link-color:                   $hc-purple;
-$btn-primary-color:            $vault-yellow;
-$base-button-color:            $bg-hover;
+$btn-primary-color:            $hc-black;
+$base-button-color:            $bg-light;
 
 $code-background-color:        $bg-code;
-$feedback-color:               darken($text-secondary, 5%);
+$feedback-color:               $text-muted;
 
 $border-color:                 $border-color;
 
-$table-background-color:       $bg-dark;
-$search-background-color:      $bg-dark;
+$table-background-color:       $bg-white;
+$search-background-color:      $bg-white;
 
-$search-result-highlight-color:     $vault-yellow;
+$search-result-highlight-color:     $hc-purple;
 $search-result-preview-color:       $text-secondary;

@@ -1,29 +1,145 @@
 // ═══════════════════════════════════════════════════════════
-// HashiCorp Vault-inspired custom styles for custos docs
+// HashiCorp Vault-inspired LIGHT theme with Klavika font
 // ═══════════════════════════════════════════════════════════
 
-// ─── Typography ─────────────────────────────────────────
-:root {
-  --vault-yellow: #FFD814;
-  --vault-yellow-light: #FFEC6E;
-  --hc-purple: #7B61FF;
-  --hc-purple-light: #9B87F5;
-  --bg-darkest: #0C0C0F;
-  --bg-dark: #101014;
-  --bg-sidebar: #131318;
-  --bg-content: #16161B;
-  --bg-code: #1C1C23;
-  --bg-hover: #22222B;
-  --bg-subtle: #2A2A35;
-  --border-color: #2A2A35;
-  --text-primary: #E2E2E8;
-  --text-secondary: #A3A3B0;
-  --text-muted: #6B6B7B;
+// ─── Klavika @font-face ─────────────────────────────────
+// Place your purchased .woff2 files in docs/assets/fonts/
+// Variants: Light (300), Regular (400), Medium (500), Bold (700)
+// plus matching italics.
+
+@font-face {
+  font-family: "Klavika";
+  src: url("../assets/fonts/klavika-light.woff2") format("woff2"),
+       url("../assets/fonts/klavika-light.woff")  format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
 }
 
+@font-face {
+  font-family: "Klavika";
+  src: url("../assets/fonts/klavika-light-italic.woff2") format("woff2"),
+       url("../assets/fonts/klavika-light-italic.woff")  format("woff");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Klavika";
+  src: url("../assets/fonts/klavika-regular.woff2") format("woff2"),
+       url("../assets/fonts/klavika-regular.woff")  format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Klavika";
+  src: url("../assets/fonts/klavika-regular-italic.woff2") format("woff2"),
+       url("../assets/fonts/klavika-regular-italic.woff")  format("woff");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Klavika";
+  src: url("../assets/fonts/klavika-medium.woff2") format("woff2"),
+       url("../assets/fonts/klavika-medium.woff")  format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Klavika";
+  src: url("../assets/fonts/klavika-medium-italic.woff2") format("woff2"),
+       url("../assets/fonts/klavika-medium-italic.woff")  format("woff");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Klavika";
+  src: url("../assets/fonts/klavika-bold.woff2") format("woff2"),
+       url("../assets/fonts/klavika-bold.woff")  format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Klavika";
+  src: url("../assets/fonts/klavika-bold-italic.woff2") format("woff2"),
+       url("../assets/fonts/klavika-bold-italic.woff")  format("woff");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+// ─── Klavika for monospace (code) — using Klavika Display if available,
+//     otherwise fall back to system monospace ─────────────
+@font-face {
+  font-family: "Klavika Mono";
+  src: url("../assets/fonts/klavika-display-regular.woff2") format("woff2"),
+       url("../assets/fonts/klavika-display-regular.woff")  format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+// ─── CSS custom properties ──────────────────────────────
+:root {
+  --vault-yellow: #FFD814;
+  --vault-yellow-dark: #C9A600;
+  --hc-purple: #6B57D2;
+  --hc-purple-dark: #5040A0;
+  --hc-black: #1D1E25;
+  --bg-white: #FFFFFF;
+  --bg-light: #F7F8FA;
+  --bg-sidebar: #F2F3F6;
+  --bg-code: #F4F4F8;
+  --bg-hover: #ECEDF2;
+  --bg-subtle: #E4E5EB;
+  --border-color: #DDDEE3;
+  --text-primary: #1D1E25;
+  --text-secondary: #525566;
+  --text-muted: #8B8FA2;
+
+  // Font stacks — Klavika first, system sans-serif fallback
+  --font-body: "Klavika", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Helvetica, Arial, sans-serif;
+  --font-heading: "Klavika", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Helvetica, Arial, sans-serif;
+  --font-mono: "Klavika Mono", "SF Mono", "Fira Code", "Fira Mono",
+    "Roboto Mono", Consolas, Monaco, monospace;
+}
+
+// ─── Global typography ──────────────────────────────────
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
-    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6,
+.site-title,
+.nav-list-link,
+.search-input,
+.btn,
+.label,
+.breadcrumb-nav,
+.site-footer,
+.aux-nav,
+.back-to-top {
+  font-family: var(--font-heading);
+}
+
+code, pre, .highlight {
+  font-family: var(--font-mono);
 }
 
 // ─── Sidebar ────────────────────────────────────────────
@@ -32,9 +148,10 @@ body {
   border-right: 1px solid var(--border-color);
 
   .site-title {
+    font-family: var(--font-heading);
     font-weight: 700;
-    color: var(--vault-yellow) !important;
-    letter-spacing: 0.02em;
+    color: var(--hc-black) !important;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
     font-size: 0.9rem !important;
   }
@@ -43,6 +160,7 @@ body {
 .nav-list {
   .nav-list-item {
     .nav-list-link {
+      font-family: var(--font-body);
       color: var(--text-secondary);
       border-radius: 4px;
       margin: 1px 8px;
@@ -56,8 +174,8 @@ body {
       }
 
       &.active {
-        background-color: rgba(123, 97, 255, 0.12);
-        color: var(--hc-purple-light);
+        background-color: rgba(107, 87, 210, 0.08);
+        color: var(--hc-purple);
         font-weight: 600;
         border-left: 3px solid var(--hc-purple);
         margin-left: 5px;
@@ -68,20 +186,22 @@ body {
 
 // ─── Main content ───────────────────────────────────────
 .main {
-  background-color: var(--bg-content);
+  background-color: var(--bg-white);
 }
 
 .main-content {
   h1 {
-    color: #FFFFFF;
+    font-family: var(--font-heading);
+    color: var(--hc-black);
     font-weight: 700;
-    border-bottom: 2px solid var(--vault-yellow);
+    border-bottom: 2px solid var(--hc-black);
     padding-bottom: 0.4em;
     margin-bottom: 1em;
   }
 
   h2 {
-    color: #FFFFFF;
+    font-family: var(--font-heading);
+    color: var(--hc-black);
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.3em;
@@ -89,6 +209,7 @@ body {
   }
 
   h3, h4, h5, h6 {
+    font-family: var(--font-heading);
     color: var(--text-primary);
     font-weight: 600;
   }
@@ -100,55 +221,43 @@ body {
     transition: color 0.15s ease;
 
     &:hover {
-      color: var(--hc-purple-light);
+      color: var(--hc-purple-dark);
       text-decoration: underline;
     }
   }
 
   // ─── Code blocks ────────────────────────────────────
   code {
+    font-family: var(--font-mono);
     background-color: var(--bg-code);
     border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 2px 6px;
     font-size: 0.85em;
-    color: var(--vault-yellow-light);
-    font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono",
-      "Consolas", "Monaco", monospace;
+    color: var(--hc-purple-dark);
   }
 
   pre {
-    background-color: var(--bg-darkest) !important;
-    border: 1px solid var(--border-color);
+    background-color: var(--hc-black) !important;
+    border: 1px solid #2E2F38;
     border-radius: 6px;
     padding: 1em;
     overflow-x: auto;
-    position: relative;
 
     code {
+      font-family: var(--font-mono);
       background-color: transparent;
       border: none;
       padding: 0;
-      color: var(--text-primary);
+      color: #E2E2E8;
       font-size: 0.84em;
       line-height: 1.6;
-    }
-
-    // Language label effect
-    &::before {
-      position: absolute;
-      top: 0;
-      right: 0;
-      padding: 2px 8px;
-      font-size: 0.7em;
-      color: var(--text-muted);
-      border-bottom-left-radius: 4px;
-      background-color: var(--bg-subtle);
     }
   }
 
   // ─── Tables ─────────────────────────────────────────
   table {
+    font-family: var(--font-body);
     border-collapse: separate;
     border-spacing: 0;
     border: 1px solid var(--border-color);
@@ -157,8 +266,9 @@ body {
     width: 100%;
 
     th {
-      background-color: var(--bg-dark);
-      color: var(--vault-yellow);
+      font-family: var(--font-heading);
+      background-color: var(--bg-light);
+      color: var(--hc-black);
       font-weight: 600;
       font-size: 0.85em;
       text-transform: uppercase;
@@ -181,16 +291,15 @@ body {
       background-color: var(--bg-hover);
     }
 
-    // "Yes" cells in comparison tables
     td strong {
-      color: var(--vault-yellow);
+      color: var(--hc-purple);
     }
   }
 
   // ─── Blockquotes / Callouts ─────────────────────────
   blockquote {
     border-left: 3px solid var(--hc-purple);
-    background-color: rgba(123, 97, 255, 0.06);
+    background-color: rgba(107, 87, 210, 0.04);
     padding: 0.8em 1.2em;
     border-radius: 0 6px 6px 0;
     color: var(--text-secondary);
@@ -215,35 +324,39 @@ body {
 
 // ─── Buttons ────────────────────────────────────────────
 .btn-primary {
-  background-color: var(--vault-yellow) !important;
-  color: #000000 !important;
+  font-family: var(--font-heading);
+  background-color: var(--hc-black) !important;
+  color: #FFFFFF !important;
   border: none !important;
   font-weight: 600;
   border-radius: 6px;
   padding: 10px 20px;
   transition: background-color 0.2s ease, transform 0.1s ease;
-  text-transform: none;
 
   &:hover {
-    background-color: var(--vault-yellow-light) !important;
+    background-color: var(--hc-purple) !important;
     transform: translateY(-1px);
   }
 }
 
 .btn {
+  font-family: var(--font-heading);
   border-radius: 6px;
   border: 1px solid var(--border-color);
   font-weight: 500;
+  color: var(--text-secondary);
   transition: all 0.2s ease;
 
   &:hover {
     background-color: var(--bg-hover);
+    color: var(--text-primary);
   }
 }
 
 // ─── Search ─────────────────────────────────────────────
 .search-input {
-  background-color: var(--bg-dark) !important;
+  font-family: var(--font-body);
+  background-color: var(--bg-white) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: 6px;
   color: var(--text-primary) !important;
@@ -254,15 +367,15 @@ body {
 
   &:focus {
     border-color: var(--hc-purple) !important;
-    box-shadow: 0 0 0 2px rgba(123, 97, 255, 0.2);
+    box-shadow: 0 0 0 2px rgba(107, 87, 210, 0.15);
   }
 }
 
 .search-results {
-  background-color: var(--bg-dark) !important;
+  background-color: var(--bg-white) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .search-result {
@@ -275,6 +388,7 @@ body {
 
 // ─── Footer ─────────────────────────────────────────────
 .site-footer {
+  font-family: var(--font-body);
   border-top: 1px solid var(--border-color);
   color: var(--text-muted);
   font-size: 0.8em;
@@ -287,6 +401,7 @@ body {
 // ─── Aux nav (GitHub link) ──────────────────────────────
 .aux-nav {
   .aux-nav-list-item a {
+    font-family: var(--font-heading);
     color: var(--text-secondary) !important;
     border: 1px solid var(--border-color);
     border-radius: 6px;
@@ -295,7 +410,7 @@ body {
     transition: all 0.15s ease;
 
     &:hover {
-      color: var(--text-primary) !important;
+      color: var(--hc-purple) !important;
       background-color: var(--bg-hover);
       border-color: var(--hc-purple);
     }
@@ -304,25 +419,26 @@ body {
 
 // ─── just-the-docs callouts ─────────────────────────────
 .warning {
-  background-color: rgba(232, 155, 62, 0.08);
+  background-color: #FFF8E6;
   border-left-color: #E89B3E;
   border-radius: 0 6px 6px 0;
 }
 
 .note {
-  background-color: rgba(123, 97, 255, 0.06);
+  background-color: #F0EDFA;
   border-left-color: var(--hc-purple);
   border-radius: 0 6px 6px 0;
 }
 
 .tip {
-  background-color: rgba(46, 182, 125, 0.08);
+  background-color: #E8F8F0;
   border-left-color: #2EB67D;
   border-radius: 0 6px 6px 0;
 }
 
 // ─── Labels / Badges ────────────────────────────────────
 .label {
+  font-family: var(--font-heading);
   border-radius: 4px;
   font-size: 0.7em;
   font-weight: 600;
@@ -331,43 +447,45 @@ body {
 }
 
 .label-yellow {
-  background-color: rgba(255, 216, 20, 0.15);
-  color: var(--vault-yellow);
+  background-color: #FFF3CC;
+  color: #8A6D00;
 }
 
 .label-blue {
-  background-color: rgba(123, 97, 255, 0.15);
-  color: var(--hc-purple-light);
+  background-color: #EEEBF9;
+  color: var(--hc-purple);
 }
 
 // ─── Back to top ────────────────────────────────────────
 .back-to-top {
-  background-color: var(--bg-subtle);
+  font-family: var(--font-heading);
+  background-color: var(--bg-light);
   color: var(--text-secondary);
   border-radius: 6px;
   border: 1px solid var(--border-color);
 
   &:hover {
     background-color: var(--bg-hover);
-    color: var(--vault-yellow);
+    color: var(--hc-purple);
   }
 }
 
 // ─── Table of contents ──────────────────────────────────
 .toc-list {
   a {
+    font-family: var(--font-body);
     color: var(--text-secondary) !important;
 
     &:hover {
-      color: var(--hc-purple-light) !important;
+      color: var(--hc-purple) !important;
     }
   }
 }
 
 // ─── Selection highlight ────────────────────────────────
 ::selection {
-  background-color: rgba(123, 97, 255, 0.3);
-  color: #FFFFFF;
+  background-color: rgba(107, 87, 210, 0.2);
+  color: var(--hc-black);
 }
 
 // ─── Scrollbar styling ──────────────────────────────────
@@ -377,7 +495,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-darkest);
+  background: var(--bg-light);
 }
 
 ::-webkit-scrollbar-thumb {
