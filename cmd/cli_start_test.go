@@ -1,13 +1,20 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/fatih/color"
 	cli "github.com/timkrebs/gocli"
 )
+
+func init() {
+	// Disable colors in tests for predictable output assertions.
+	color.NoColor = true
+}
 
 func TestCliStartCmd_Run_MissingFlag(t *testing.T) {
 	ui := cli.NewMockUi()
@@ -34,7 +41,6 @@ func TestCliStartCmd_Run_InvalidSpecFile(t *testing.T) {
 }
 
 func TestCliStartCmd_Run_ValidSpec(t *testing.T) {
-	// Write a temporary spec and policy for the test.
 	tmpDir := t.TempDir()
 
 	policyContent := `
@@ -67,19 +73,23 @@ tests:
 	}
 
 	ui := cli.NewMockUi()
-	cmd := &CliStartCmd{UI: ui}
+	var buf bytes.Buffer
+	cmd := &CliStartCmd{UI: ui, Writer: &buf}
 
 	code := cmd.Run([]string{"-f", specFile})
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0\nstderr: %s", code, ui.ErrorWriter.String())
 	}
 
-	out := ui.OutputWriter.String()
-	if !strings.Contains(out, "PASS") {
-		t.Errorf("output should contain PASS, got: %s", out)
+	out := buf.String()
+	if !strings.Contains(out, "OK ") {
+		t.Errorf("output should contain OK, got:\n%s", out)
 	}
-	if !strings.Contains(out, "SUITE") {
-		t.Errorf("output should contain SUITE header, got: %s", out)
+	if !strings.Contains(out, "test-suite") {
+		t.Errorf("output should contain suite name, got:\n%s", out)
+	}
+	if !strings.Contains(out, "2 passed") {
+		t.Errorf("output should contain summary, got:\n%s", out)
 	}
 }
 
@@ -96,7 +106,6 @@ path "secret/foo" {
 		t.Fatal(err)
 	}
 
-	// This spec expects "allow" but the policy doesn't grant "create"
 	specContent := `
 suite: "failing-suite"
 policies:
@@ -113,16 +122,64 @@ tests:
 	}
 
 	ui := cli.NewMockUi()
-	cmd := &CliStartCmd{UI: ui}
+	var buf bytes.Buffer
+	cmd := &CliStartCmd{UI: ui, Writer: &buf}
 
 	code := cmd.Run([]string{"-f", specFile})
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1 (test should fail)", code)
 	}
 
-	errOut := ui.ErrorWriter.String()
-	if !strings.Contains(errOut, "FAIL") {
-		t.Errorf("error output should contain FAIL, got: %s", errOut)
+	out := buf.String()
+	if !strings.Contains(out, "FAIL ") {
+		t.Errorf("output should contain FAIL, got:\n%s", out)
+	}
+	if !strings.Contains(out, "1 failed") {
+		t.Errorf("output should show 1 failed in summary, got:\n%s", out)
+	}
+}
+
+func TestCliStartCmd_Run_VerboseFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	policyContent := `
+path "secret/foo" {
+  capabilities = ["read"]
+}
+`
+	policyFile := filepath.Join(tmpDir, "policy.hcl")
+	if err := os.WriteFile(policyFile, []byte(policyContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	specContent := `
+suite: "verbose-suite"
+policies:
+  - path: ` + policyFile + `
+tests:
+  - name: "allow read"
+    path: "secret/foo"
+    capabilities: [read]
+    expect: allow
+`
+	specFile := filepath.Join(tmpDir, "spec.yaml")
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	ui := cli.NewMockUi()
+	var buf bytes.Buffer
+	cmd := &CliStartCmd{UI: ui, Writer: &buf}
+
+	code := cmd.Run([]string{"-f", specFile, "-v"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr: %s", code, ui.ErrorWriter.String())
+	}
+
+	out := buf.String()
+	// Verbose mode shows the explanation.
+	if !strings.Contains(out, "allowed by rule") {
+		t.Errorf("verbose output should contain explanation, got:\n%s", out)
 	}
 }
 
