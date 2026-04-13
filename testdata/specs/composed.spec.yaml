@@ -1,0 +1,80 @@
+suite: "composed-policy-evaluation"
+
+# Test the combined effect of multiple policies attached to a single entity.
+# Capabilities are merged across policies; deny overrides allow.
+policies:
+  - path: ../policies/readonly.hcl
+  - path: ../policies/payment-svc.hcl
+
+tests:
+  # --- From readonly.hcl: broad read/list on secret/* ---
+  - name: "readonly grants read on any secret"
+    path: "secret/data/some-service/config"
+    capabilities: [read]
+    expect: allow
+
+  - name: "readonly grants list on secrets"
+    path: "secret/metadata/"
+    capabilities: [list]
+    expect: allow
+
+  # --- From payment-svc.hcl: specific service access ---
+  - name: "payment-svc grants read on its own secrets"
+    path: "secret/data/payment-svc/db-creds"
+    capabilities: [read]
+    expect: allow
+
+  - name: "payment-svc grants list on its own secrets"
+    path: "secret/data/payment-svc/"
+    capabilities: [list]
+    expect: allow
+
+  # --- Deny override: payment-svc denies billing even though readonly allows ---
+  - name: "billing denied despite readonly allowing read"
+    path: "secret/data/billing-svc/api-key"
+    capabilities: [read]
+    expect: deny
+
+  # --- Composed capabilities: readonly read + payment-svc create/update ---
+  - name: "can issue certs via payment-svc policy"
+    path: "pki_int/issue/payment-svc"
+    capabilities: [create, update]
+    expect: allow
+
+  - name: "can encrypt via payment-svc policy"
+    path: "transit/encrypt/payment-key"
+    capabilities: [update]
+    expect: allow
+
+  # --- readonly does NOT grant write anywhere ---
+  - name: "cannot write secrets via readonly alone"
+    path: "secret/data/some-service/config"
+    capabilities: [create]
+    expect: deny
+
+  - name: "cannot delete secrets"
+    path: "secret/data/some-service/config"
+    capabilities: [delete]
+    expect: deny
+
+  # --- readonly system access ---
+  - name: "can read sys health"
+    path: "sys/health"
+    capabilities: [read]
+    expect: allow
+
+  - name: "cannot seal vault"
+    path: "sys/seal"
+    capabilities: [sudo]
+    expect: deny
+
+  - name: "can read own token"
+    path: "auth/token/lookup-self"
+    capabilities: [read]
+    expect: allow
+
+  # --- No access to unrelated paths ---
+  - name: "no database access from either policy"
+    path: "database/creds/readonly"
+    capabilities: [read]
+    expect: deny
