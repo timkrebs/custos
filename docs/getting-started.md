@@ -1,39 +1,51 @@
 ---
-title: Getting Started
 layout: default
-nav_order: 2
+title: Getting Started
 ---
 
+[Home](.) |
+[**Getting Started**](getting-started) |
+[CLI Reference](cli-reference) |
+[Architecture](architecture) |
+[Roadmap](roadmap) |
+[Contributing](contributing)
+
 # Getting Started
-{: .no_toc }
 
 Install custos and run your first policy test in under five minutes.
-{: .fs-6 .fw-300 }
-
-## Table of contents
-{: .no_toc .text-delta }
-
-1. TOC
-{:toc}
 
 ---
 
 ## Installation
 
-### From source (requires Go 1.22+)
+### Install script (recommended)
 
 ```bash
-go install github.com/timkrebs/custos/cmd/custos@latest
+curl -sSfL https://raw.githubusercontent.com/timkrebs/custos/main/.build/install.sh | bash
 ```
 
-### From release binaries
-
-Download the latest release for your platform from the [Releases](https://github.com/timkrebs/custos/releases) page.
+Installs the latest release to `~/.local/bin`. Use `-b /usr/local/bin` for system-wide install, or `-v v0.1.0` for a specific version.
 
 ### Homebrew (macOS/Linux)
 
 ```bash
 brew install timkrebs/tap/custos
+```
+
+### From release binaries
+
+Download the latest release for your platform from the [Releases](https://github.com/timkrebs/custos/releases) page. Archives include binaries for Linux, macOS, and Windows on amd64 and arm64.
+
+### Docker
+
+```bash
+docker run --rm -v $(pwd):/work ghcr.io/timkrebs/custos test -f /work/spec.yaml
+```
+
+### From source (requires Go 1.22+)
+
+```bash
+go install github.com/timkrebs/custos@latest
 ```
 
 ---
@@ -106,15 +118,6 @@ tests:
     path: "sys/seal"
     capabilities: [sudo]
     expect: deny
-
-analyze:
-  - check: overprivilege
-    warn_on:
-      - wildcard_paths
-      - sudo_capability
-
-  - check: coverage
-    min_coverage: 80%
 ```
 
 ### 3. Run tests
@@ -139,18 +142,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install custos
-        run: go install github.com/timkrebs/custos/cmd/custos@latest
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/timkrebs/custos/main/.build/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Run policy tests (offline)
-        run: custos test -f payment-svc.spec.yaml --format=junit > results.xml
-
-      - name: Publish test results
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Vault policy tests
-          path: results.xml
-          reporter: java-junit
+      - name: Run policy tests
+        run: custos test -f payment-svc.spec.yaml
 ```
 
 ---
@@ -179,6 +176,6 @@ A test spec is a YAML file with the following structure:
 
 ## Next steps
 
-- Read the full [CLI Reference]({% link cli-reference.md %}) for all commands and flags
-- Understand the [Architecture]({% link architecture.md %}) of the evaluation engine
-- Check the [Roadmap]({% link roadmap.md %}) for upcoming features
+- Read the full [CLI Reference](cli-reference) for all commands and flags
+- Understand the [Architecture](architecture) of the evaluation engine
+- Check the [Roadmap](roadmap) for upcoming features

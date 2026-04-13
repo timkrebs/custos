@@ -1,20 +1,18 @@
 ---
-title: Roadmap
 layout: default
-nav_order: 5
+title: Roadmap
 ---
 
+[Home](.) |
+[Getting Started](getting-started) |
+[CLI Reference](cli-reference) |
+[Architecture](architecture) |
+[**Roadmap**](roadmap) |
+[Contributing](contributing)
+
 # Roadmap
-{: .no_toc }
 
 Planned evolution of custos from first release through platform maturity.
-{: .fs-6 .fw-300 }
-
-## Table of contents
-{: .no_toc .text-delta }
-
-1. TOC
-{:toc}
 
 ---
 
@@ -27,63 +25,35 @@ Planned evolution of custos from first release through platform maturity.
 
 ---
 
-## NOW — v0.1.0: "It works offline"
-{: .d-inline-block }
-
-In Progress
-{: .label .label-yellow }
+## v0.1.0: "It works offline" — Released
 
 The credibility release. One command, one promise: you can test Vault policies without touching Vault.
-
-**Launch bar:** Someone can `go install`, write a YAML test spec, point it at an HCL policy file, and get pass/fail results in the terminal.
-
-### Must ship
 
 - [x] Project scaffolding and CI/CD setup
 - [x] HCL policy parser with full field support
 - [x] YAML test spec loader and validator
-- [x] Version command
-- [ ] Offline policy evaluation engine
-- [ ] `custos test` command with terminal reporter
-- [ ] Comprehensive evaluation engine tests
-
-### Explicitly not in v0.1.0
-
-Online mode, `scan`, `init`, `validate`, JUnit/JSON reporters, enterprise features.
+- [x] Offline policy evaluation engine
+- [x] `custos test` command with terminal reporter
+- [x] Comprehensive evaluation engine tests
+- [x] Version command with `--json` flag
+- [x] Build and release infrastructure (GoReleaser, Docker, install script, Homebrew)
 
 ---
 
-## NEXT — v0.2.0: "It fits in CI"
-{: .d-inline-block }
-
-Planned
-{: .label .label-blue }
+## v0.2.0: "It fits in CI" — Planned
 
 Once the core works, the next unlock is CI/CD integration.
 
-### Must have
-
 - [ ] JUnit XML reporter (`--format junit`)
+- [ ] JSON reporter (`--format json`)
 - [ ] Proper exit codes (`--fail-on-warn`)
 - [ ] `custos validate` command
-
-### Should have
-
-- [ ] JSON reporter (`--format json`)
 - [ ] `custos init --from policy.hcl`
-- [ ] Verbose mode (`-v`)
-
-### Could have
-
-- [ ] First-party GitHub Action (`timkrebs/custos-action@v1`)
+- [ ] Verbose mode (`-v`) improvements
 
 ---
 
-## LATER — v0.3.0 to v0.5.0: "It's the platform"
-{: .d-inline-block }
-
-Planned
-{: .label .label-blue }
+## v0.3.0 to v0.5.0: "It's the platform" — Planned
 
 ### v0.3.0 — Online mode and security scanning
 
@@ -109,7 +79,7 @@ Planned
 
 | Version | Status | Theme |
 |:--------|:-------|:------|
-| v0.1.0 | In progress | Offline policy testing |
+| v0.1.0 | **Released** | Offline policy testing |
 | v0.2.0 | Planned | CI/CD integration |
 | v0.3.0 | Planned | Online mode and scanning |
 | v0.4.0 | Planned | Deep analysis |

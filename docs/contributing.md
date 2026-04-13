@@ -1,20 +1,18 @@
 ---
-title: Contributing
 layout: default
-nav_order: 6
+title: Contributing
 ---
 
+[Home](.) |
+[Getting Started](getting-started) |
+[CLI Reference](cli-reference) |
+[Architecture](architecture) |
+[Roadmap](roadmap) |
+[**Contributing**](contributing)
+
 # Contributing
-{: .no_toc }
 
 How to set up a development environment, conventions, and the pull request process.
-{: .fs-6 .fw-300 }
-
-## Table of contents
-{: .no_toc .text-delta }
-
-1. TOC
-{:toc}
 
 ---
 
@@ -25,7 +23,7 @@ How to set up a development environment, conventions, and the pull request proce
 - **Improve documentation** — fix typos, clarify explanations, add examples
 - **Write tests** that increase coverage
 - **Review pull requests** opened by other contributors
-- **Implement features** from the [roadmap]({% link roadmap.md %})
+- **Implement features** from the [Roadmap](roadmap)
 
 Look for issues labeled [`good first issue`](https://github.com/timkrebs/custos/labels/good%20first%20issue) or [`help wanted`](https://github.com/timkrebs/custos/labels/help%20wanted).
 

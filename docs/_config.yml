@@ -1,55 +1,17 @@
 title: Custos
-description: The missing `terraform plan` for HashiCorp Vault policies.
+description: The missing terraform plan for HashiCorp Vault policies.
 url: "https://timkrebs.github.io"
 baseurl: "/custos"
 
-remote_theme: just-the-docs/just-the-docs@v0.10.0
+remote_theme: pages-themes/cayman@v0.2.0
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
 
 permalink: pretty
 
-aux_links:
-  "GitHub":
-    - "https://github.com/timkrebs/custos"
-
-aux_links_new_tab: true
-
-nav_sort: case_insensitive
-
-heading_anchors: true
-
-back_to_top: true
-back_to_top_text: "Back to top"
-
-footer_content: >-
-  custos is licensed under <a href="https://github.com/timkrebs/custos/blob/main/LICENSE">MPL-2.0</a>.
-  An independent open-source project &mdash; not affiliated with or endorsed by HashiCorp or IBM.
-
-color_scheme: hashicorp
-
-callouts:
-  warning:
-    title: Warning
-    color: yellow
-  note:
-    title: Note
-    color: blue
-  tip:
-    title: Tip
-    color: green
-
-search_enabled: true
-search:
-  heading_level: 2
-  previews: 3
-  preview_words_before: 5
-  preview_words_after: 10
-
-ga_tracking:
-ga_tracking_anonymize_ip: true
-
-plugins:
-  - jekyll-seo-tag
-
 exclude:
   - DEVELOPMENT_WORKFLOW.md
-  - assets/vault_sentinel_cli_architecture.svg
+  - Gemfile
+  - Gemfile.lock
