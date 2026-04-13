@@ -21,21 +21,17 @@ The credibility release. One command, one promise: you can test Vault policies w
 
 ### Must ship
 
-- **Rename to custos** — module path, binary name, README, GoReleaser config, CI workflows, all references.
-- **Refactor HCL parser** — the current `pkg/parser/hcl.go` parses a generic config schema. It needs to correctly parse Vault policy `path` blocks with `capabilities`, `allowed_parameters`, `denied_parameters`, `min_wrapping_ttl`, `max_wrapping_ttl`, and glob patterns.
-- **Offline policy evaluation engine** — given a policy (or set of policies) and a path + capability assertion, return allow/deny. Must handle glob matching (`*`, `+` segments), capability precedence, and deny overrides. Use `hashicorp/vault/sdk` for parsing fidelity.
-- **YAML test spec parser** — parse test spec files that define assertions (path, expected capabilities, expected result).
-- **`custos test` command with terminal reporter** — colored pass/fail output with clear context on failures (which policy granted/denied, which line).
-- **Test coverage on the evaluation engine** — comprehensive tests covering glob patterns, precedence rules, deny semantics, and edge cases.
-- **Version command** — `custos version` (already implemented, needs rename).
+- [x] **Rename to custos** — module path, binary name, README, GoReleaser config, CI workflows, all references.
+- [x] **Refactor HCL parser** — `pkg/parser/hcl.go` correctly parses Vault policy `path` blocks with `capabilities`, `allowed_parameters`, `denied_parameters`, `min_wrapping_ttl`, `max_wrapping_ttl`, and glob patterns.
+- [x] **Offline policy evaluation engine** — `pkg/evaluator/offline.go` evaluates path + capability assertions against parsed policies. Handles glob matching (`*`, `+` segments), longest-prefix precedence, deny overrides, and multi-policy composition.
+- [x] **YAML test spec parser** — `pkg/spec` parses and validates test spec files with assertions (path, expected capabilities, expected result).
+- [x] **`custos test` command with terminal reporter** — `pkg/reporter/terminal.go` renders colored pass/fail output with context on failures (which policy matched, explanation). Supports `--verbose` and `--fail-on-warn`.
+- [x] **Test coverage on the evaluation engine** — comprehensive table-driven tests covering glob patterns, precedence rules, deny semantics, multi-policy composition, and edge cases.
+- [x] **Version command** — `custos version` with `--json` flag.
 
 ### Explicitly not in v0.1.0
 
 Online mode, `scan`, `init`, `validate`, JUnit/JSON reporters, enterprise features. All cut. Ship small, ship right.
-
-### Key risk
-
-The HCL parser refactor is the riskiest item. Vault's path matching has nuanced behavior around glob precedence, longest-prefix matching, and capability merging across multiple policies. Spike on this first before touching anything else.
 
 ---
 
@@ -99,7 +95,7 @@ These ideas are interesting but explicitly not on the roadmap yet. Revisit post-
 
 | Version | Status | Theme |
 |---------|--------|-------|
-| v0.1.0 | In progress | Offline policy testing — `custos test` |
+| v0.1.0 | **Released** | Offline policy testing — `custos test` |
 | v0.2.0 | Planned | CI/CD integration — reporters, `init`, `validate` |
 | v0.3.0 | Planned | Online mode and security scanning |
 | v0.4.0 | Planned | Deep analysis — overprivilege, conflicts, coverage |
