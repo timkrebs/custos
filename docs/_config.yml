@@ -24,7 +24,7 @@ footer_content: >-
   custos is licensed under <a href="https://github.com/timkrebs/custos/blob/main/LICENSE">MPL-2.0</a>.
   An independent open-source project &mdash; not affiliated with or endorsed by HashiCorp or IBM.
 
-color_scheme: dark
+color_scheme: hashicorp
 
 callouts:
   warning:

@@ -1,0 +1,59 @@
+// HashiCorp Vault-inspired color scheme for just-the-docs
+// Based on the HashiCorp Developer documentation design language
+
+// ─── Brand colors ───────────────────────────────────────
+$vault-yellow:       #FFD814;
+$vault-yellow-light: #FFEC6E;
+$vault-yellow-dark:  #C9A600;
+$hc-purple:          #7B61FF;
+$hc-purple-light:    #9B87F5;
+
+// ─── Dark backgrounds ───────────────────────────────────
+$bg-darkest:   #0C0C0F;
+$bg-dark:      #101014;
+$bg-sidebar:   #131318;
+$bg-content:   #16161B;
+$bg-code:      #1C1C23;
+$bg-hover:     #22222B;
+$bg-subtle:    #2A2A35;
+
+// ─── Text colors ────────────────────────────────────────
+$text-primary:   #E2E2E8;
+$text-secondary: #A3A3B0;
+$text-muted:     #6B6B7B;
+
+// ─── Borders ────────────────────────────────────────────
+$border-color:  #2A2A35;
+$border-subtle: #222230;
+
+// ─── Functional colors ──────────────────────────────────
+$green:  #2EB67D;
+$red:    #E45858;
+$orange: #E89B3E;
+$blue:   #4C9AFF;
+
+// ═══════════════════════════════════════════════════════════
+// just-the-docs color scheme overrides
+// ═══════════════════════════════════════════════════════════
+
+$body-background-color:        $bg-content;
+$sidebar-color:                $bg-sidebar;
+$body-text-color:              $text-primary;
+$body-heading-color:           #FFFFFF;
+$nav-child-link-color:         $text-secondary;
+$search-result-preview-color:  $text-secondary;
+
+$link-color:                   $hc-purple;
+$btn-primary-color:            $vault-yellow;
+$base-button-color:            $bg-hover;
+
+$code-background-color:        $bg-code;
+$feedback-color:               darken($text-secondary, 5%);
+
+$border-color:                 $border-color;
+
+$table-background-color:       $bg-dark;
+$search-background-color:      $bg-dark;
+
+$search-result-highlight-color:     $vault-yellow;
+$search-result-preview-color:       $text-secondary;
