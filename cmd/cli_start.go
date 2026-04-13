@@ -21,25 +21,25 @@ type CliStartCmd struct {
 }
 
 func (c *CliStartCmd) Name() string     { return "test" }
-func (c *CliStartCmd) Synopsis() string { return "Run custos tests" }
+func (c *CliStartCmd) Synopsis() string { return "Run test assertions against Vault policies" }
 func (c *CliStartCmd) Help() string {
 	return `Usage: custos test [options]
 
+  Run test assertions against one or more Vault HCL policy files.
+  Each test case in the spec file is evaluated against the loaded
+  policies and the result is compared to the expected outcome.
+
   Options:
-	-f, --file string      Path to test spec YAML file (required)
-    --vault-addr string    Vault server address (enables online mode)
-    --vault-token string   Vault authentication token
-    --vault-namespace str  Vault namespace (Enterprise)
-    --format string        Output format: terminal (default), junit, json
-    --fail-on-warn         Exit non-zero on security warnings (not just test failures)
-    --timeout duration     Timeout for online Vault requests (default: 10s)
-  	-v, --verbose          Show detailed evaluation trace per test
-	`
+    -f, --file string      Path to test spec YAML file (required)
+    --fail-on-warn         Exit non-zero on security warnings too
+    -v, --verbose          Show detailed evaluation trace per test
+`
 }
 
 func (c *CliStartCmd) Run(args []string) int {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	specFile := fs.String("file", "", "Path to test spec YAML file (required)")
+	failOnWarn := fs.Bool("fail-on-warn", false, "Exit non-zero on security warnings")
 	verbose := fs.Bool("verbose", false, "Show detailed evaluation trace per test")
 	fs.StringVar(specFile, "f", "", "Path to test spec YAML file (required)")
 	fs.BoolVar(verbose, "v", false, "Show detailed evaluation trace per test")
@@ -83,7 +83,11 @@ func (c *CliStartCmd) Run(args []string) int {
 	rep := reporter.NewTerminal(w, *verbose)
 	rep.Report(suite)
 
+	// Exit code logic.
 	if suite.Failed > 0 {
+		return 1
+	}
+	if *failOnWarn && len(suite.Warnings) > 0 {
 		return 1
 	}
 	return 0

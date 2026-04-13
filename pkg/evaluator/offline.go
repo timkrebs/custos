@@ -26,10 +26,11 @@ type MatchedRule struct {
 
 // SuiteResult aggregates results for the full test suite.
 type SuiteResult struct {
-	Suite   string
-	Results []TestResult
-	Passed  int
-	Failed  int
+	Suite    string
+	Results  []TestResult
+	Passed   int
+	Failed   int
+	Warnings []string
 }
 
 // TestResult pairs the spec expectation with the engine result.
