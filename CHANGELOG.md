@@ -10,7 +10,108 @@ moved under a version header when a release is cut.
 
 ## [Unreleased]
 
-- n/a
+### Added
+
+- **JUnit XML reporter** (`pkg/reporter/junit.go`) — new output format for
+  CI/CD systems. Emits a standard `<testsuites>` / `<testsuite>` /
+  `<testcase>` / `<failure>` document with per-test timing (microsecond
+  precision), ISO 8601 timestamps, and XML-escaped content. Failure
+  elements carry a short dashboard message plus a chardata body with
+  expected/got, path, capabilities, matched rule, explanation, and
+  multi-policy contribution provenance.
+- **`--format` flag on `custos test`** — selects the output format.
+  Accepts `terminal` (default) or `junit`. Unknown values fail fast with
+  an error listing supported options. JUnit output is written as a
+  complete XML document to stdout so it can be redirected to a file
+  (`custos test -f spec.yaml --format=junit > results.xml`) and consumed
+  by dorny/test-reporter, Jenkins, GitLab, and GitHub Actions test
+  reporters without further processing.
+- **`reporter.Reporter` interface + `reporter.New` factory** — unified
+  entry point for format selection so future formats (JSON, SARIF) can
+  be added without touching the CLI.
+- **Per-test timing** (`evaluator.TestResult.Duration`,
+  `evaluator.SuiteResult.Duration`) — measured by `EvaluateSuite` via
+  `time.Now()` around each `Evaluate` call. Consumed by JUnit; ignored
+  by the terminal reporter.
+- **Multi-policy composition engine** (`pkg/evaluator/composer.go`) —
+  new `Compose(policies, requestPath) Composed` primitive implementing
+  Vault's real composition semantics: per-policy longest-prefix match,
+  union across policies, deny override. Fixes two latent correctness
+  bugs in the pre-composer global-best selector and exposes full
+  provenance (`Composed.GrantedBy`, `DeniedBy`, `Contributions`).
+- **Multi-policy provenance rendering in the terminal reporter** —
+  failing tests that involve two or more contributing policies now
+  display a compact `contributions:` block listing each policy, its
+  matched rule, and either the capabilities it granted or a DENIED
+  marker. Verbose mode (`-v`) renders the same block on passing tests.
+- **Strict YAML decoding for test specs** — `KnownFields(true)` on the
+  spec loader rejects unknown top-level fields and typos (e.g.
+  `capabilties:`) instead of silently ignoring them.
+- **Rich HCL parser diagnostics** (`pkg/parser.ParsePolicyDiag`,
+  `ParsePolicyFileDiag`) — new functions return `hcl.Diagnostics` plus
+  the underlying `hclparse.Parser` so callers can render file:line:col
+  source-annotated errors via `hcl.NewDiagnosticTextWriter`.
+- **Typed capability vocabulary** (`pkg/vaultpolicy`) — new package
+  owning the canonical Vault capability set (`Capabilities` map and
+  `IsValidCapability` helper) so parser and spec validator share one
+  source of truth.
+- **Schema versioning for test specs** — optional top-level `version`
+  field accepting `v1` or empty for back-compat. Unknown versions are
+  rejected at load time.
+- **Typed `Percentage` for `min_coverage`** — custom YAML unmarshaler
+  accepts numeric (`80`, `80.5`) and string-with-percent (`"80%"`)
+  forms. Invalid values fail at decode time, range `[0, 100]` is
+  enforced in validation.
+- **Scalar-form policy references** — `policies:` entries now accept
+  both `- foo.hcl` and `- path: foo.hcl` via a custom YAML unmarshaler.
+- **Error aggregation in spec validation** — collects every validation
+  error via `errors.Join` so users see all problems in one run.
+  Duplicate test-name detection, `AnalyzeCheck` field validation
+  (`check`, `severity`, `min_coverage`) included.
+- **Per-attribute source ranges on HCL parameter errors** — type
+  mismatches in `allowed_parameters`, `denied_parameters`, and
+  `required_parameters` now return `hcl.Diagnostics` with
+  file:line:col instead of panicking on non-string elements.
+- **Codecov integration** — coverage reports are uploaded from CI for
+  every push and pull request.
+
+### Changed
+
+- **`reporter.Terminal.Report` now returns `error`** (always nil) to
+  satisfy the new `Reporter` interface uniformly across formats.
+  Existing callers that ignored the return value continue to compile;
+  callers that check the return handle the JUnit encoding path too.
+- **`evaluator.Evaluate` is now a thin adapter over `Compose`** — the
+  per-policy composition primitive owns match selection, allowing
+  `Result.Composed` to expose complete multi-policy provenance to
+  downstream reporters. The pre-composer global-best selector has been
+  removed.
+- **`AnalyzeCheck.MinCoverage`** is now `*Percentage` (was `string`).
+  The change is source-compatible with any existing spec files because
+  both numeric and string-with-percent forms parse into the same type.
+
+### Fixed
+
+- **Cross-policy union bug** — when policy A granted `[read, create]`
+  on `secret/*` and policy B granted `[read]` on `secret/foo`,
+  requesting `create` on `secret/foo` previously denied because the
+  old selector only kept the most specific global match. Per-policy
+  composition now unions both policies' contributions correctly.
+- **Cross-policy deny-override bug** — an explicit deny on a less
+  specific rule in one policy was previously hidden when another
+  policy had a more specific allow for the same path. The deny
+  override now fires whenever any policy's per-policy winner carries
+  the deny capability, matching Vault's runtime behavior.
+- **HCL parameter decoder crashes** — `allowed_parameters = ["foo"]`
+  and similar non-map values used to panic inside `cty.AsValueMap`.
+  The decoder now returns a typed diagnostic with source range
+  instead.
+- **Silent attribute errors** — a malformed attribute in one path
+  block previously caused the parser to drop subsequent attributes on
+  that block. All diagnostics are now accumulated and returned.
+- **Noisy library logging** — removed `log.Printf` calls from the HCL
+  parser's remain-attribute path so the library no longer writes to
+  the global logger.
 
 ## [0.1.0] - 2026-04-13
 

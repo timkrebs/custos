@@ -37,8 +37,11 @@ func NewTerminal(w io.Writer, verbose bool) *Terminal {
 	return &Terminal{Writer: w, Verbose: verbose}
 }
 
-// Report renders a full suite result to the terminal.
-func (t *Terminal) Report(suite evaluator.SuiteResult) {
+// Report renders a full suite result to the terminal. It always returns
+// nil; underlying io.Writer errors are not propagated because the terminal
+// output is advisory and fmt.Fprintf already swallows them. The error
+// return exists to satisfy the Reporter interface uniformly across formats.
+func (t *Terminal) Report(suite evaluator.SuiteResult) error {
 	green := color.New(color.FgGreen, color.Bold)
 	red := color.New(color.FgRed, color.Bold)
 	yellow := color.New(color.FgYellow)
@@ -116,6 +119,7 @@ func (t *Terminal) Report(suite evaluator.SuiteResult) {
 	dim.Fprint(t.Writer, " · ")
 	fmt.Fprintln(t.Writer, skipStr)
 	fmt.Fprintln(t.Writer)
+	return nil
 }
 
 // hasMultiPolicyProvenance reports whether a composed result has enough
