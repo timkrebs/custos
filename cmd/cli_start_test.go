@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -431,6 +432,48 @@ tests:
 	}
 	if !strings.Contains(tc.Failure.Content, "Capabilities: [create]") {
 		t.Errorf("failure body missing capabilities line, got:\n%s", tc.Failure.Content)
+	}
+}
+
+// cliFailingWriter implements io.Writer and returns an error on the very
+// first Write call. Used to cover the reporter-write error path in
+// CliStartCmd.Run when the caller supplies a broken Writer (for example,
+// a closed pipe or a disk-full redirect target).
+type cliFailingWriter struct{}
+
+func (cliFailingWriter) Write(_ []byte) (int, error) {
+	return 0, errors.New("cli: simulated writer error")
+}
+
+// TestCliStartCmd_Run_ReportWriteError injects a failing writer and runs
+// the pipeline with --format=junit so the reporter attempts a real write
+// and surfaces an error. The CLI must exit 1 and emit the wrapped
+// "Error writing report" message to stderr so users can distinguish
+// report-emission failures from evaluation failures.
+func TestCliStartCmd_Run_ReportWriteError(t *testing.T) {
+	specFile := writeFixture(t,
+		`path "secret/foo" { capabilities = ["read"] }`,
+		`
+suite: "write-error-suite"
+policies:
+  - path: POLICY_PATH
+tests:
+  - name: "t"
+    path: "secret/foo"
+    capabilities: [read]
+    expect: allow
+`)
+
+	ui := cli.NewMockUi()
+	cmd := &CliStartCmd{UI: ui, Writer: cliFailingWriter{}}
+
+	code := cmd.Run([]string{"-f", specFile, "--format=junit"})
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1 on reporter write failure", code)
+	}
+	errOut := ui.ErrorWriter.String()
+	if !strings.Contains(errOut, "Error writing report") {
+		t.Errorf("stderr should mention 'Error writing report', got: %s", errOut)
 	}
 }
 

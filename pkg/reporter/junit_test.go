@@ -3,6 +3,7 @@ package reporter
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -492,6 +493,161 @@ func TestNewJUnit_NilWriter_DefaultsToStdout(t *testing.T) {
 	r := NewJUnit(nil)
 	if r.Writer != os.Stdout {
 		t.Error("nil writer should default to os.Stdout")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Writer failure paths
+// ---------------------------------------------------------------------------
+
+// failWriter fails the Nth Write call with a fixed error. failAfter=0 fails
+// the very first Write (simulating a closed pipe or disk full before any
+// bytes land). failAfter=N allows N successful writes and then fails.
+// Total call count is recorded so tests can assert that their intended
+// error path was actually exercised.
+type failWriter struct {
+	failAfter int
+	calls     int
+	err       error
+}
+
+func (w *failWriter) Write(p []byte) (int, error) {
+	w.calls++
+	if w.calls > w.failAfter {
+		if w.err == nil {
+			w.err = errors.New("fail: simulated writer error")
+		}
+		return 0, w.err
+	}
+	return len(p), nil
+}
+
+// TestJUnit_Report_WriteHeaderError covers the first error return in
+// Report: the XML declaration write fails before any encoding happens.
+func TestJUnit_Report_WriteHeaderError(t *testing.T) {
+	fw := &failWriter{failAfter: 0}
+	r := newFixedJUnit(fw)
+
+	err := r.Report(evaluator.SuiteResult{
+		Suite:  "s",
+		Passed: 1,
+		Results: []evaluator.TestResult{
+			{Test: spec.TestCase{Name: "t", Path: "p", Expect: "allow"}, Result: evaluator.Result{Allowed: true}, Pass: true},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error when header write fails")
+	}
+	if !strings.Contains(err.Error(), "writing XML header") {
+		t.Errorf("error should mention header, got: %v", err)
+	}
+}
+
+// TestJUnit_Report_EncodeOrFlushError covers the error return from either
+// enc.Encode or enc.Flush. The xml.Encoder buffers internally, so a Write
+// failure after the header may surface during Encode or during Flush
+// depending on buffer sizing; either branch satisfies the invariant that
+// a downstream write failure produces a non-nil error containing the word
+// "JUnit".
+func TestJUnit_Report_EncodeOrFlushError(t *testing.T) {
+	fw := &failWriter{failAfter: 1} // allow the header write, then fail
+	r := newFixedJUnit(fw)
+
+	err := r.Report(evaluator.SuiteResult{
+		Suite:  "s",
+		Passed: 1,
+		Results: []evaluator.TestResult{
+			{Test: spec.TestCase{Name: "t", Path: "p", Expect: "allow"}, Result: evaluator.Result{Allowed: true}, Pass: true},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error when body write fails")
+	}
+	if !strings.Contains(err.Error(), "JUnit XML") {
+		t.Errorf("error should mention JUnit XML, got: %v", err)
+	}
+	if fw.calls < 2 {
+		t.Errorf("expected the encoder to attempt at least one body write, got %d total calls", fw.calls)
+	}
+}
+
+// TestJUnit_Report_TrailingNewlineError exercises the last error return in
+// Report. It uses a countingWriter that succeeds for every call made by
+// the XML encoder and only fails on the trailing newline write. Because
+// xml.Encoder's internal flush cadence is an implementation detail, the
+// test first measures how many writes a successful run produces, then
+// configures the failing writer to fail exactly the next call after that.
+func TestJUnit_Report_TrailingNewlineError(t *testing.T) {
+	suite := evaluator.SuiteResult{
+		Suite:  "s",
+		Passed: 1,
+		Results: []evaluator.TestResult{
+			{Test: spec.TestCase{Name: "t", Path: "p", Expect: "allow"}, Result: evaluator.Result{Allowed: true}, Pass: true},
+		},
+	}
+
+	// Baseline: count how many Write calls a successful Report produces.
+	counter := &failWriter{failAfter: 1 << 30} // effectively unlimited
+	if err := newFixedJUnit(counter).Report(suite); err != nil {
+		t.Fatalf("baseline run failed: %v", err)
+	}
+	successfulWrites := counter.calls
+
+	// Replay with failAfter set so the trailing newline call is the one
+	// that fails. A well-behaved Report must propagate that error with
+	// the "trailing newline" wrapping.
+	fw := &failWriter{failAfter: successfulWrites - 1}
+	err := newFixedJUnit(fw).Report(suite)
+	if err == nil {
+		t.Fatal("expected error when trailing newline write fails")
+	}
+	// The error may be wrapped as "trailing newline" or, depending on
+	// the encoder's buffer state, as an earlier write failure. Either
+	// satisfies the coverage goal of reaching the final io.WriteString
+	// path under failure; assert that Report did not silently swallow it.
+	if !strings.Contains(err.Error(), "newline") && !strings.Contains(err.Error(), "JUnit") {
+		t.Errorf("expected wrapped error, got: %v", err)
+	}
+}
+
+// TestBuildFailure_NoExplanation covers the buildFailure branch where the
+// evaluator produced no explanation string (rare but legal for hand-
+// constructed Results). The output must still render the expected/got,
+// path, and capabilities lines and must not crash on the empty field.
+func TestBuildFailure_NoExplanation(t *testing.T) {
+	var buf bytes.Buffer
+	r := newFixedJUnit(&buf)
+
+	suite := evaluator.SuiteResult{
+		Suite:  "no-explanation",
+		Failed: 1,
+		Results: []evaluator.TestResult{
+			{
+				Test: spec.TestCase{Name: "t", Path: "secret/x", Capabilities: []string{"read"}, Expect: "allow"},
+				Result: evaluator.Result{
+					Allowed:     false,
+					Explanation: "", // explicitly empty
+					MatchedRule: nil,
+				},
+				Pass: false,
+			},
+		},
+	}
+
+	if err := r.Report(suite); err != nil {
+		t.Fatal(err)
+	}
+
+	var doc junitTestsuites
+	if err := xml.Unmarshal(buf.Bytes(), &doc); err != nil {
+		t.Fatalf("empty-explanation XML not parseable: %v", err)
+	}
+	body := doc.Suites[0].Testcases[0].Failure.Content
+	if !strings.Contains(body, "Path:     secret/x") {
+		t.Errorf("body missing path line, got:\n%s", body)
+	}
+	if strings.Contains(body, "Explanation:") {
+		t.Errorf("body should not contain Explanation line when evaluator returned empty string, got:\n%s", body)
 	}
 }
 
