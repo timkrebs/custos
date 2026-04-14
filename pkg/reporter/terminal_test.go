@@ -248,6 +248,303 @@ func TestTerminal_Report_PathsInOutput(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Multi-policy provenance rendering tests
+// ---------------------------------------------------------------------------
+
+// TestTerminal_Report_MultiPolicyFailure_RendersContributions verifies that
+// a failing result with multiple contributing policies emits the
+// "contributions:" block listing each policy, its matching rule path, and
+// the capabilities it granted. This is the primary provenance case: the
+// user sees exactly which policy denied and which policies would have
+// otherwise granted access.
+func TestTerminal_Report_MultiPolicyFailure_RendersContributions(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminal(&buf, false)
+
+	composed := &evaluator.Composed{
+		Path:    "secret/data/billing-svc/api-key",
+		Granted: map[string]bool{"read": true, "list": true},
+		Denied:  true,
+		Contributions: []evaluator.RuleContribution{
+			{PolicyFile: "policies/readonly.hcl", RulePath: "secret/*", Capabilities: []string{"read", "list"}},
+			{PolicyFile: "policies/payment-svc.hcl", RulePath: "secret/data/billing-svc/*", Capabilities: []string{"deny"}, IsDeny: true},
+		},
+		DeniedBy: []evaluator.RuleContribution{
+			{PolicyFile: "policies/payment-svc.hcl", RulePath: "secret/data/billing-svc/*", Capabilities: []string{"deny"}, IsDeny: true},
+		},
+	}
+
+	suite := evaluator.SuiteResult{
+		Suite:  "billing-deny",
+		Failed: 1,
+		Results: []evaluator.TestResult{
+			{
+				Test: spec.TestCase{Name: "should allow read", Path: "secret/data/billing-svc/api-key", Capabilities: []string{"read"}, Expect: "allow"},
+				Result: evaluator.Result{
+					TestName:    "should allow read",
+					Path:        "secret/data/billing-svc/api-key",
+					Allowed:     false,
+					Explanation: "explicitly denied by rule \"secret/data/billing-svc/*\" in policies/payment-svc.hcl",
+					MatchedRule: &evaluator.MatchedRule{PolicyFile: "policies/payment-svc.hcl", RulePath: "secret/data/billing-svc/*"},
+					Composed:    composed,
+				},
+				Pass: false,
+			},
+		},
+	}
+
+	r.Report(suite)
+	out := buf.String()
+
+	if !strings.Contains(out, "contributions:") {
+		t.Errorf("missing contributions block, got:\n%s", out)
+	}
+	if !strings.Contains(out, "readonly (secret/*) granted [list read]") {
+		t.Errorf("missing readonly grant line, got:\n%s", out)
+	}
+	if !strings.Contains(out, "payment-svc (secret/data/billing-svc/*) DENIED") {
+		t.Errorf("missing payment-svc DENIED line, got:\n%s", out)
+	}
+}
+
+// TestTerminal_Report_MultiPolicyFailure_MissingCaps renders the
+// contributions block for a missing-capabilities failure (no explicit
+// deny), proving that provenance surfaces even when the failure mode is
+// union-insufficient rather than deny-override.
+func TestTerminal_Report_MultiPolicyFailure_MissingCaps(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminal(&buf, false)
+
+	composed := &evaluator.Composed{
+		Path:    "secret/data/app/key",
+		Granted: map[string]bool{"read": true, "list": true},
+		Contributions: []evaluator.RuleContribution{
+			{PolicyFile: "policies/readonly.hcl", RulePath: "secret/*", Capabilities: []string{"read", "list"}},
+			{PolicyFile: "policies/app.hcl", RulePath: "secret/data/app/*", Capabilities: []string{"read"}},
+		},
+	}
+
+	suite := evaluator.SuiteResult{
+		Suite:  "missing-caps",
+		Failed: 1,
+		Results: []evaluator.TestResult{
+			{
+				Test: spec.TestCase{Name: "should allow create", Path: "secret/data/app/key", Capabilities: []string{"create"}, Expect: "allow"},
+				Result: evaluator.Result{
+					TestName:    "should allow create",
+					Path:        "secret/data/app/key",
+					Allowed:     false,
+					Explanation: "missing capabilities [create] (granted: [list read])",
+					MatchedRule: &evaluator.MatchedRule{PolicyFile: "policies/readonly.hcl", RulePath: "secret/*"},
+					Composed:    composed,
+				},
+				Pass: false,
+			},
+		},
+	}
+
+	r.Report(suite)
+	out := buf.String()
+
+	if !strings.Contains(out, "contributions:") {
+		t.Errorf("missing contributions block, got:\n%s", out)
+	}
+	if !strings.Contains(out, "readonly (secret/*) granted [list read]") {
+		t.Errorf("missing readonly grant line, got:\n%s", out)
+	}
+	if !strings.Contains(out, "app (secret/data/app/*) granted [read]") {
+		t.Errorf("missing app grant line, got:\n%s", out)
+	}
+	// No policy denied, so the DENIED marker must not appear.
+	if strings.Contains(out, "DENIED") {
+		t.Errorf("should not render DENIED marker without a deny contribution, got:\n%s", out)
+	}
+}
+
+// TestTerminal_Report_SinglePolicyFailure_SuppressesContributions ensures
+// the contributions block stays quiet when only one policy contributed.
+// Single-policy provenance is already conveyed by the existing "via policy"
+// line in the failure detail; repeating it would be noise.
+func TestTerminal_Report_SinglePolicyFailure_SuppressesContributions(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminal(&buf, false)
+
+	composed := &evaluator.Composed{
+		Path:    "secret/foo",
+		Granted: map[string]bool{"read": true},
+		Contributions: []evaluator.RuleContribution{
+			{PolicyFile: "policies/only.hcl", RulePath: "secret/foo", Capabilities: []string{"read"}},
+		},
+	}
+
+	suite := evaluator.SuiteResult{
+		Suite:  "single-policy",
+		Failed: 1,
+		Results: []evaluator.TestResult{
+			{
+				Test: spec.TestCase{Name: "wants create", Path: "secret/foo", Capabilities: []string{"create"}, Expect: "allow"},
+				Result: evaluator.Result{
+					TestName:    "wants create",
+					Path:        "secret/foo",
+					Allowed:     false,
+					Explanation: "missing capabilities [create]",
+					MatchedRule: &evaluator.MatchedRule{PolicyFile: "policies/only.hcl", RulePath: "secret/foo"},
+					Composed:    composed,
+				},
+				Pass: false,
+			},
+		},
+	}
+
+	r.Report(suite)
+	out := buf.String()
+
+	if strings.Contains(out, "contributions:") {
+		t.Errorf("single-contribution result should not render contributions block, got:\n%s", out)
+	}
+	// But the existing via-policy line must still be present.
+	if !strings.Contains(out, `via policy "only"`) {
+		t.Errorf("should still show via policy line, got:\n%s", out)
+	}
+}
+
+// TestTerminal_Report_VerbosePassMultiPolicy shows that verbose mode renders
+// the contributions block even on passing tests when multiple policies
+// contributed, so operators can opt into full composition traces.
+func TestTerminal_Report_VerbosePassMultiPolicy(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminal(&buf, true)
+
+	composed := &evaluator.Composed{
+		Path:    "secret/data/payment-svc/db-creds",
+		Granted: map[string]bool{"read": true, "list": true},
+		Contributions: []evaluator.RuleContribution{
+			{PolicyFile: "policies/readonly.hcl", RulePath: "secret/*", Capabilities: []string{"read", "list"}},
+			{PolicyFile: "policies/payment-svc.hcl", RulePath: "secret/data/payment-svc/*", Capabilities: []string{"read", "list"}},
+		},
+	}
+
+	suite := evaluator.SuiteResult{
+		Suite:  "verbose-compose",
+		Passed: 1,
+		Results: []evaluator.TestResult{
+			{
+				Test: spec.TestCase{Name: "read payment secrets", Path: "secret/data/payment-svc/db-creds", Capabilities: []string{"read"}, Expect: "allow"},
+				Result: evaluator.Result{
+					TestName:    "read payment secrets",
+					Path:        "secret/data/payment-svc/db-creds",
+					Allowed:     true,
+					Explanation: "allowed by rule \"secret/data/payment-svc/*\" in policies/payment-svc.hcl (composed from 2 policies)",
+					MatchedRule: &evaluator.MatchedRule{PolicyFile: "policies/payment-svc.hcl", RulePath: "secret/data/payment-svc/*"},
+					Composed:    composed,
+				},
+				Pass: true,
+			},
+		},
+	}
+
+	r.Report(suite)
+	out := buf.String()
+
+	if !strings.Contains(out, "OK ") {
+		t.Errorf("should show OK line, got:\n%s", out)
+	}
+	if !strings.Contains(out, "contributions:") {
+		t.Errorf("verbose + multi-policy pass should render contributions, got:\n%s", out)
+	}
+	if !strings.Contains(out, "readonly (secret/*) granted [list read]") {
+		t.Errorf("missing readonly contribution line, got:\n%s", out)
+	}
+	if !strings.Contains(out, "payment-svc (secret/data/payment-svc/*) granted [list read]") {
+		t.Errorf("missing payment-svc contribution line, got:\n%s", out)
+	}
+	// Verbose also prints the explanation trace; must not duplicate the
+	// contributions block.
+	if got := strings.Count(out, "contributions:"); got != 1 {
+		t.Errorf("contributions block rendered %d times, want 1, got:\n%s", got, out)
+	}
+}
+
+// TestTerminal_Report_NonVerbosePassMultiPolicy_Silent confirms we do not
+// spam the default (non-verbose) output with provenance on every passing
+// multi-policy test. Users must opt in via -v for that trace.
+func TestTerminal_Report_NonVerbosePassMultiPolicy_Silent(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminal(&buf, false)
+
+	composed := &evaluator.Composed{
+		Path:    "secret/data/payment-svc/db-creds",
+		Granted: map[string]bool{"read": true, "list": true},
+		Contributions: []evaluator.RuleContribution{
+			{PolicyFile: "policies/readonly.hcl", RulePath: "secret/*", Capabilities: []string{"read", "list"}},
+			{PolicyFile: "policies/payment-svc.hcl", RulePath: "secret/data/payment-svc/*", Capabilities: []string{"read", "list"}},
+		},
+	}
+
+	suite := evaluator.SuiteResult{
+		Suite:  "quiet-pass",
+		Passed: 1,
+		Results: []evaluator.TestResult{
+			{
+				Test: spec.TestCase{Name: "read payment secrets", Path: "secret/data/payment-svc/db-creds", Capabilities: []string{"read"}, Expect: "allow"},
+				Result: evaluator.Result{
+					TestName: "read payment secrets",
+					Path:     "secret/data/payment-svc/db-creds",
+					Allowed:  true,
+					Composed: composed,
+				},
+				Pass: true,
+			},
+		},
+	}
+
+	r.Report(suite)
+	out := buf.String()
+
+	if strings.Contains(out, "contributions:") {
+		t.Errorf("non-verbose passing test should stay silent about provenance, got:\n%s", out)
+	}
+}
+
+// TestTerminal_Report_NoComposed_NoContributions guards against nil
+// dereferences when a Result has no Composed field populated (e.g. legacy
+// callers or test fixtures built before the composer landed).
+func TestTerminal_Report_NoComposed_NoContributions(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminal(&buf, true)
+
+	suite := evaluator.SuiteResult{
+		Suite:  "no-composed",
+		Failed: 1,
+		Results: []evaluator.TestResult{
+			{
+				Test: spec.TestCase{Name: "t", Path: "secret/foo", Capabilities: []string{"read"}, Expect: "allow"},
+				Result: evaluator.Result{
+					TestName:    "t",
+					Path:        "secret/foo",
+					Allowed:     false,
+					Explanation: "no policy rule matches path (implicit deny)",
+					MatchedRule: nil,
+					Composed:    nil,
+				},
+				Pass: false,
+			},
+		},
+	}
+
+	// Must not panic and must not render contributions.
+	r.Report(suite)
+	out := buf.String()
+
+	if strings.Contains(out, "contributions:") {
+		t.Errorf("nil Composed must not render contributions, got:\n%s", out)
+	}
+	if !strings.Contains(out, "FAIL ") {
+		t.Errorf("should still render FAIL line, got:\n%s", out)
+	}
+}
+
 func TestTerminal_Report_NOCOLORRespected(t *testing.T) {
 	// fatih/color respects NO_COLOR env var natively.
 	// Verify that the color.NoColor flag is checkable.
