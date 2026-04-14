@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/timkrebs/custos/pkg/parser"
@@ -15,6 +16,13 @@ type Result struct {
 	Allowed     bool
 	MatchedRule *MatchedRule // nil if no rule matched (implicit deny)
 	Explanation string
+
+	// Composed exposes the full multi-policy composition, including
+	// per-capability provenance and the list of policies that denied the
+	// path. It is nil only for implicit-deny results where no policy had a
+	// matching rule. Reporter and UI code can walk this for rich output;
+	// MatchedRule remains the single primary attribution for back-compat.
+	Composed *Composed
 }
 
 // MatchedRule identifies which policy and path rule produced the decision.
@@ -79,97 +87,77 @@ func EvaluateSuite(policies []parser.Policy, s *spec.Spec) SuiteResult {
 }
 
 // Evaluate runs a single test case against a set of parsed policies.
+// Composition follows Vault semantics via Compose: per-policy most-specific
+// match, then union across policies, with deny as a hard override.
 func Evaluate(policies []parser.Policy, tc spec.TestCase) Result {
-	// Collect all matching rules across all policies.
-	var candidates []matchCandidate
-	for _, pol := range policies {
-		for _, rule := range pol.Paths {
-			matched, mtype, specificity := matchPath(rule.Path, tc.Path)
-			if matched {
-				candidates = append(candidates, matchCandidate{
-					policyFile:  pol.Filepath,
-					rule:        rule,
-					mtype:       mtype,
-					specificity: specificity,
-				})
-			}
-		}
-	}
+	composed := Compose(policies, tc.Path)
 
-	// No matching rule → implicit deny.
-	if len(candidates) == 0 {
+	// No policy had a matching rule -> implicit deny.
+	if len(composed.Contributions) == 0 {
 		return Result{
 			TestName:    tc.Name,
 			Path:        tc.Path,
 			Allowed:     false,
 			Explanation: "no policy rule matches path (implicit deny)",
+			Composed:    &composed,
 		}
 	}
 
-	// Select the best matches (highest priority tier).
-	best := selectBestMatches(candidates)
-
-	// Check for deny override: if any best-match has "deny" in capabilities,
-	// the result is always deny regardless of other grants.
-	for _, c := range best {
-		for _, cap := range c.rule.Capabilities {
-			if cap == "deny" {
-				return Result{
-					TestName: tc.Name,
-					Path:     tc.Path,
-					Allowed:  false,
-					MatchedRule: &MatchedRule{
-						PolicyFile:   c.policyFile,
-						RulePath:     c.rule.Path,
-						Capabilities: c.rule.Capabilities,
-					},
-					Explanation: fmt.Sprintf(
-						"explicitly denied by rule %q in %s",
-						c.rule.Path, c.policyFile,
-					),
-				}
-			}
+	// Explicit deny from any contributing policy wins over every grant.
+	if composed.Denied {
+		first := composed.DeniedBy[0]
+		explanation := fmt.Sprintf("explicitly denied by rule %q in %s", first.RulePath, first.PolicyFile)
+		if len(composed.DeniedBy) > 1 {
+			explanation = fmt.Sprintf("%s (and %d other deny contribution(s))", explanation, len(composed.DeniedBy)-1)
+		}
+		return Result{
+			TestName: tc.Name,
+			Path:     tc.Path,
+			Allowed:  false,
+			MatchedRule: &MatchedRule{
+				PolicyFile:   first.PolicyFile,
+				RulePath:     first.RulePath,
+				Capabilities: first.Capabilities,
+			},
+			Explanation: explanation,
+			Composed:    &composed,
 		}
 	}
 
-	// Merge capabilities from all best-matched rules.
-	granted := mergeCapabilities(best)
+	primary := composed.Contributions[0]
+	grantedSlice := capSetToSlice(composed.Granted)
 
-	// Check if all requested capabilities are present.
-	if hasAllCapabilities(granted, tc.Capabilities) {
-		first := best[0]
+	if composed.HasAll(tc.Capabilities) {
+		explanation := fmt.Sprintf("allowed by rule %q in %s", primary.RulePath, primary.PolicyFile)
+		if len(composed.Contributions) > 1 {
+			explanation = fmt.Sprintf("%s (composed from %d policies)", explanation, len(composed.Contributions))
+		}
 		return Result{
 			TestName: tc.Name,
 			Path:     tc.Path,
 			Allowed:  true,
 			MatchedRule: &MatchedRule{
-				PolicyFile:   first.policyFile,
-				RulePath:     first.rule.Path,
-				Capabilities: capSetToSlice(granted),
+				PolicyFile:   primary.PolicyFile,
+				RulePath:     primary.RulePath,
+				Capabilities: grantedSlice,
 			},
-			Explanation: fmt.Sprintf(
-				"allowed by rule %q in %s",
-				first.rule.Path, first.policyFile,
-			),
+			Explanation: explanation,
+			Composed:    &composed,
 		}
 	}
 
-	// Some requested capabilities are missing.
-	missing := missingCapabilities(granted, tc.Capabilities)
-	first := best[0]
+	missing := composed.Missing(tc.Capabilities)
 	return Result{
 		TestName: tc.Name,
 		Path:     tc.Path,
 		Allowed:  false,
 		MatchedRule: &MatchedRule{
-			PolicyFile:   first.policyFile,
-			RulePath:     first.rule.Path,
-			Capabilities: capSetToSlice(granted),
+			PolicyFile:   primary.PolicyFile,
+			RulePath:     primary.RulePath,
+			Capabilities: grantedSlice,
 		},
-		Explanation: fmt.Sprintf(
-			"missing capabilities %v on rule %q in %s",
-			missing, first.rule.Path, first.policyFile,
-		),
+		Explanation: fmt.Sprintf("missing capabilities %v (granted: %v)", missing, grantedSlice),
+		Composed:    &composed,
 	}
 }
 
@@ -243,72 +231,14 @@ func matchGlobSegments(ruleSegs, reqSegs []string) bool {
 	return ri == len(ruleSegs) && qi == len(reqSegs)
 }
 
-// selectBestMatches filters candidates to only those in the highest priority tier.
-// Priority: exact > glob > prefix. Within the same type, highest specificity wins.
-func selectBestMatches(candidates []matchCandidate) []matchCandidate {
-	if len(candidates) == 0 {
-		return nil
-	}
-
-	// Find the best match type and specificity.
-	bestType := candidates[0].mtype
-	bestSpec := candidates[0].specificity
-	for _, c := range candidates[1:] {
-		if c.mtype > bestType {
-			bestType = c.mtype
-			bestSpec = c.specificity
-		} else if c.mtype == bestType && c.specificity > bestSpec {
-			bestSpec = c.specificity
-		}
-	}
-
-	// Collect all candidates that match the best tier.
-	var best []matchCandidate
-	for _, c := range candidates {
-		if c.mtype == bestType && c.specificity == bestSpec {
-			best = append(best, c)
-		}
-	}
-	return best
-}
-
-// mergeCapabilities unions capabilities from all candidates into a single set.
-func mergeCapabilities(candidates []matchCandidate) map[string]bool {
-	caps := make(map[string]bool)
-	for _, c := range candidates {
-		for _, cap := range c.rule.Capabilities {
-			caps[cap] = true
-		}
-	}
-	return caps
-}
-
-// hasAllCapabilities checks if every requested capability exists in the granted set.
-func hasAllCapabilities(granted map[string]bool, requested []string) bool {
-	for _, cap := range requested {
-		if !granted[cap] {
-			return false
-		}
-	}
-	return true
-}
-
-// missingCapabilities returns the requested capabilities not present in granted.
-func missingCapabilities(granted map[string]bool, requested []string) []string {
-	var missing []string
-	for _, cap := range requested {
-		if !granted[cap] {
-			missing = append(missing, cap)
-		}
-	}
-	return missing
-}
-
-// capSetToSlice converts a capability set to a sorted slice.
+// capSetToSlice converts a capability set to a sorted slice so the output
+// order is deterministic across runs (important for stable test assertions
+// and reporter output).
 func capSetToSlice(caps map[string]bool) []string {
-	var result []string
-	for cap := range caps {
-		result = append(result, cap)
+	result := make([]string, 0, len(caps))
+	for capability := range caps {
+		result = append(result, capability)
 	}
+	sort.Strings(result)
 	return result
 }
