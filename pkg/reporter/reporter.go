@@ -25,11 +25,17 @@ const (
 	// as dorny/test-reporter, Jenkins, and GitLab. The output contains
 	// only XML so it can be safely redirected to a file.
 	FormatJUnit Format = "junit"
+
+	// FormatJSON produces a structured JSON document intended for
+	// programmatic consumption: jq filters, custom dashboards, policy
+	// drift detectors, and similar tooling. The schema is stable
+	// within a major version (see JSONSchemaVersion).
+	FormatJSON Format = "json"
 )
 
 // SupportedFormats lists every format New accepts, in the order they should
 // appear in user-facing error messages and documentation.
-var SupportedFormats = []Format{FormatTerminal, FormatJUnit}
+var SupportedFormats = []Format{FormatTerminal, FormatJUnit, FormatJSON}
 
 // Reporter renders a completed SuiteResult to an underlying writer. Report
 // returns a non-nil error only for encoding failures that cannot produce a
@@ -49,6 +55,11 @@ func New(format Format, w io.Writer, verbose bool) (Reporter, error) {
 		return NewTerminal(w, verbose), nil
 	case FormatJUnit:
 		return NewJUnit(w), nil
+	case FormatJSON:
+		// Pretty-print by default. Callers wanting compact output
+		// type-assert to *JSON and flip the Pretty field; the CLI
+		// does this behind --compact.
+		return NewJSON(w, true), nil
 	default:
 		return nil, fmt.Errorf("unknown reporter format %q (supported: %s)", format, joinFormats(SupportedFormats))
 	}

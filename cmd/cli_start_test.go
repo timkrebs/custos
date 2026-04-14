@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"os"
@@ -477,6 +478,192 @@ tests:
 	}
 }
 
+// jsonCLIDoc is a minimal mirror of the reporter JSON schema used purely
+// to round-trip the CLI output in tests. Duplicating the shape here lets
+// the CLI test stay independent of unexported reporter internals while
+// still asserting the document is valid and carries the documented
+// stable fields.
+type jsonCLIDoc struct {
+	SchemaVersion string  `json:"schema_version"`
+	Suite         string  `json:"suite"`
+	Duration      float64 `json:"duration_seconds"`
+	Summary       struct {
+		Total    int `json:"total"`
+		Passed   int `json:"passed"`
+		Failed   int `json:"failed"`
+		Warnings int `json:"warnings"`
+	} `json:"summary"`
+	Warnings []string `json:"warnings"`
+	Results  []struct {
+		Name         string   `json:"name"`
+		Path         string   `json:"path"`
+		Capabilities []string `json:"capabilities"`
+		Expected     string   `json:"expected"`
+		Actual       string   `json:"actual"`
+		Pass         bool     `json:"pass"`
+		Duration     float64  `json:"duration_seconds"`
+		Explanation  string   `json:"explanation"`
+		MatchedRule  *struct {
+			PolicyFile   string   `json:"policy_file"`
+			RulePath     string   `json:"rule_path"`
+			Capabilities []string `json:"capabilities"`
+		} `json:"matched_rule"`
+	} `json:"results"`
+}
+
+// TestCliStartCmd_Run_JSONFormat_PrettyDefault covers the end-to-end
+// pipeline with --format=json. The output must be a valid JSON document
+// that round-trips through encoding/json, the schema version must match
+// the library's declared version, and the per-test metadata (path,
+// capabilities, expected/actual, matched_rule) must be present.
+func TestCliStartCmd_Run_JSONFormat_PrettyDefault(t *testing.T) {
+	specFile := writeFixture(t,
+		`path "secret/foo" { capabilities = ["read"] }`,
+		`
+suite: "json-pretty-suite"
+policies:
+  - path: POLICY_PATH
+tests:
+  - name: "allow read"
+    path: "secret/foo"
+    capabilities: [read]
+    expect: allow
+  - name: "wants create"
+    path: "secret/foo"
+    capabilities: [create]
+    expect: allow
+`)
+
+	ui := cli.NewMockUi()
+	var buf bytes.Buffer
+	cmd := &CliStartCmd{UI: ui, Writer: &buf}
+
+	code := cmd.Run([]string{"-f", specFile, "--format=json"})
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1 (one failing test)\nstderr: %s\nstdout: %s", code, ui.ErrorWriter.String(), buf.String())
+	}
+
+	out := buf.String()
+	// Pretty output must be multi-line and carry indentation.
+	if !strings.Contains(out, "\n  \"schema_version\"") {
+		t.Errorf("pretty JSON should indent top-level keys with two spaces, got:\n%s", out)
+	}
+	// Must not mix in any terminal markers.
+	if strings.Contains(out, "OK ") || strings.Contains(out, "FAIL ") {
+		t.Errorf("JSON output should not contain terminal markers, got:\n%s", out)
+	}
+
+	var doc jsonCLIDoc
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("JSON output not parseable: %v\n%s", err, out)
+	}
+	if doc.SchemaVersion == "" {
+		t.Error("schema_version must be populated")
+	}
+	if doc.Suite != "json-pretty-suite" {
+		t.Errorf("suite = %q", doc.Suite)
+	}
+	if doc.Summary.Total != 2 || doc.Summary.Passed != 1 || doc.Summary.Failed != 1 {
+		t.Errorf("summary counts wrong: %+v", doc.Summary)
+	}
+	if len(doc.Results) != 2 {
+		t.Fatalf("results len = %d, want 2", len(doc.Results))
+	}
+	if doc.Results[0].Pass != true || doc.Results[0].Actual != "allow" {
+		t.Errorf("first result wrong: %+v", doc.Results[0])
+	}
+	if doc.Results[1].Pass != false || doc.Results[1].Actual != "deny" {
+		t.Errorf("second result wrong: %+v", doc.Results[1])
+	}
+	// matched_rule must be populated on the passing test (the allow
+	// path matched a real rule) and carry the policy attribution CI
+	// consumers need.
+	if doc.Results[0].MatchedRule == nil {
+		t.Fatal("passing test should have matched_rule populated")
+	}
+	if doc.Results[0].MatchedRule.RulePath != "secret/foo" {
+		t.Errorf("matched_rule.rule_path = %q", doc.Results[0].MatchedRule.RulePath)
+	}
+}
+
+// TestCliStartCmd_Run_JSONFormat_Compact verifies that --compact flips
+// the JSON reporter to single-line mode via the CLI's type-assert
+// pathway. Downstream line-oriented tools (log aggregators, xargs
+// pipelines) depend on this invariant.
+func TestCliStartCmd_Run_JSONFormat_Compact(t *testing.T) {
+	specFile := writeFixture(t,
+		`path "secret/foo" { capabilities = ["read"] }`,
+		`
+suite: "json-compact-suite"
+policies:
+  - path: POLICY_PATH
+tests:
+  - name: "allow read"
+    path: "secret/foo"
+    capabilities: [read]
+    expect: allow
+`)
+
+	ui := cli.NewMockUi()
+	var buf bytes.Buffer
+	cmd := &CliStartCmd{UI: ui, Writer: &buf}
+
+	code := cmd.Run([]string{"-f", specFile, "--format=json", "--compact"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr: %s", code, ui.ErrorWriter.String())
+	}
+
+	out := buf.String()
+	trimmed := strings.TrimRight(out, "\n")
+	if strings.Contains(trimmed, "\n") {
+		t.Errorf("compact JSON should be one line, got:\n%s", out)
+	}
+
+	// Must still round-trip.
+	var doc jsonCLIDoc
+	if err := json.Unmarshal([]byte(trimmed), &doc); err != nil {
+		t.Fatalf("compact JSON not parseable: %v\n%s", err, out)
+	}
+	if doc.Suite != "json-compact-suite" {
+		t.Errorf("suite = %q", doc.Suite)
+	}
+	if doc.Summary.Passed != 1 {
+		t.Errorf("summary.passed = %d, want 1", doc.Summary.Passed)
+	}
+}
+
+// TestCliStartCmd_Run_CompactIgnoredForNonJSON confirms that --compact is
+// a harmless no-op when combined with a non-JSON format. Users should
+// not be punished for adding the flag preemptively.
+func TestCliStartCmd_Run_CompactIgnoredForNonJSON(t *testing.T) {
+	specFile := writeFixture(t,
+		`path "secret/foo" { capabilities = ["read"] }`,
+		`
+suite: "compact-ignored"
+policies:
+  - path: POLICY_PATH
+tests:
+  - name: "allow read"
+    path: "secret/foo"
+    capabilities: [read]
+    expect: allow
+`)
+
+	ui := cli.NewMockUi()
+	var buf bytes.Buffer
+	cmd := &CliStartCmd{UI: ui, Writer: &buf}
+
+	// Terminal format + --compact should still succeed and still
+	// produce the normal terminal output.
+	code := cmd.Run([]string{"-f", specFile, "--format=terminal", "--compact"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr: %s", code, ui.ErrorWriter.String())
+	}
+	if !strings.Contains(buf.String(), "OK ") {
+		t.Errorf("terminal output should still contain OK marker when --compact is ignored, got:\n%s", buf.String())
+	}
+}
+
 // TestCliStartCmd_Run_InvalidFormat_ErrorsWithHelpfulMessage checks that
 // an unknown --format value fails fast with an error message listing the
 // supported values.
@@ -506,8 +693,8 @@ tests:
 	if !strings.Contains(errOut, "bogus") {
 		t.Errorf("error should echo invalid format, got: %s", errOut)
 	}
-	if !strings.Contains(errOut, "terminal") || !strings.Contains(errOut, "junit") {
-		t.Errorf("error should list supported formats, got: %s", errOut)
+	if !strings.Contains(errOut, "terminal") || !strings.Contains(errOut, "junit") || !strings.Contains(errOut, "json") {
+		t.Errorf("error should list all supported formats, got: %s", errOut)
 	}
 }
 
@@ -538,5 +725,11 @@ func TestCliStartCmd_Help(t *testing.T) {
 	}
 	if !strings.Contains(help, "junit") {
 		t.Errorf("Help() should mention junit format option")
+	}
+	if !strings.Contains(help, "json") {
+		t.Errorf("Help() should mention json format option")
+	}
+	if !strings.Contains(help, "--compact") {
+		t.Errorf("Help() should mention --compact flag")
 	}
 }
