@@ -31,8 +31,15 @@ func (c *CliStartCmd) Help() string {
 
   Options:
     -f, --file string      Path to test spec YAML file (required)
+    --format string        Output format: terminal (default) or junit
     --fail-on-warn         Exit non-zero on security warnings too
     -v, --verbose          Show detailed evaluation trace per test
+
+  JUnit XML output is intended for CI systems such as GitHub Actions
+  (dorny/test-reporter), GitLab, and Jenkins. Redirect stdout to a
+  file and feed it to your reporter of choice:
+
+    custos test -f spec.yaml --format=junit > results.xml
 `
 }
 
@@ -41,6 +48,7 @@ func (c *CliStartCmd) Run(args []string) int {
 	specFile := fs.String("file", "", "Path to test spec YAML file (required)")
 	failOnWarn := fs.Bool("fail-on-warn", false, "Exit non-zero on security warnings")
 	verbose := fs.Bool("verbose", false, "Show detailed evaluation trace per test")
+	format := fs.String("format", string(reporter.FormatTerminal), "Output format: terminal or junit")
 	fs.StringVar(specFile, "f", "", "Path to test spec YAML file (required)")
 	fs.BoolVar(verbose, "v", false, "Show detailed evaluation trace per test")
 
@@ -75,13 +83,21 @@ func (c *CliStartCmd) Run(args []string) int {
 	// Run evaluation.
 	suite := evaluator.EvaluateSuite(policies, s)
 
-	// Report results.
+	// Report results. The factory validates the --format value and
+	// returns a descriptive error when the user passes an unknown format.
 	w := c.Writer
 	if w == nil {
 		w = os.Stdout
 	}
-	rep := reporter.NewTerminal(w, *verbose)
-	rep.Report(suite)
+	rep, err := reporter.New(reporter.Format(*format), w, *verbose)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error selecting reporter: %s", err))
+		return 1
+	}
+	if err := rep.Report(suite); err != nil {
+		c.UI.Error(fmt.Sprintf("Error writing report: %s", err))
+		return 1
+	}
 
 	// Exit code logic.
 	if suite.Failed > 0 {

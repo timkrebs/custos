@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/timkrebs/custos/pkg/parser"
 	"github.com/timkrebs/custos/pkg/spec"
@@ -39,6 +40,12 @@ type SuiteResult struct {
 	Passed   int
 	Failed   int
 	Warnings []string
+
+	// Duration is the total wall-clock time spent evaluating every test
+	// case in the suite. It is the sum of per-test durations and is used
+	// by machine-readable reporters such as JUnit XML; the terminal
+	// reporter currently ignores it.
+	Duration time.Duration
 }
 
 // TestResult pairs the spec expectation with the engine result.
@@ -46,6 +53,11 @@ type TestResult struct {
 	Test   spec.TestCase
 	Result Result
 	Pass   bool
+
+	// Duration is the wall-clock time spent evaluating this single test
+	// case. Populated by EvaluateSuite. Zero when a TestResult is
+	// constructed manually in tests.
+	Duration time.Duration
 }
 
 // matchType encodes the priority of a path match.
@@ -66,17 +78,25 @@ type matchCandidate struct {
 }
 
 // EvaluateSuite runs all test cases in a spec against the given policies.
+// Each test case is individually timed with time.Now; the sum of per-test
+// durations becomes SuiteResult.Duration. These timings are consumed by
+// machine-readable reporters such as JUnit XML.
 func EvaluateSuite(policies []parser.Policy, s *spec.Spec) SuiteResult {
 	sr := SuiteResult{Suite: s.Suite}
 	for _, tc := range s.Tests {
+		start := time.Now()
 		result := Evaluate(policies, tc)
+		elapsed := time.Since(start)
+
 		pass := (tc.Expect == "allow") == result.Allowed
 		tr := TestResult{
-			Test:   tc,
-			Result: result,
-			Pass:   pass,
+			Test:     tc,
+			Result:   result,
+			Pass:     pass,
+			Duration: elapsed,
 		}
 		sr.Results = append(sr.Results, tr)
+		sr.Duration += elapsed
 		if pass {
 			sr.Passed++
 		} else {
