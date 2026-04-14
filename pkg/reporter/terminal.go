@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/fatih/color"
@@ -53,6 +54,7 @@ func (t *Terminal) Report(suite evaluator.SuiteResult) {
 	// Individual test results.
 	for _, tr := range suite.Results {
 		path := tr.Test.Path
+		contribsShown := false
 		if tr.Pass {
 			green.Fprintf(t.Writer, "    OK ")
 			fmt.Fprintf(t.Writer, "%-45s ", tr.Test.Name)
@@ -74,11 +76,21 @@ func (t *Terminal) Report(suite evaluator.SuiteResult) {
 				detail += fmt.Sprintf(" via policy %q", strings.TrimSuffix(policyName, ".hcl"))
 			}
 			yellow.Fprintf(t.Writer, "      → %s\n", detail)
+
+			// On failure, surface multi-policy provenance so users can see
+			// which policy denied and which policies would have granted.
+			if hasMultiPolicyProvenance(tr.Result.Composed) {
+				t.renderContributions(tr.Result.Composed)
+				contribsShown = true
+			}
 		}
 
 		// Verbose trace.
 		if t.Verbose {
 			cyan.Fprintf(t.Writer, "      %s\n", tr.Result.Explanation)
+			if !contribsShown && hasMultiPolicyProvenance(tr.Result.Composed) {
+				t.renderContributions(tr.Result.Composed)
+			}
 		}
 	}
 
@@ -104,4 +116,50 @@ func (t *Terminal) Report(suite evaluator.SuiteResult) {
 	dim.Fprint(t.Writer, " · ")
 	fmt.Fprintln(t.Writer, skipStr)
 	fmt.Fprintln(t.Writer)
+}
+
+// hasMultiPolicyProvenance reports whether a composed result has enough
+// cross-policy provenance to be worth rendering. Single-policy results are
+// already covered by the "via policy" line in the failure detail, so we
+// only emit the contributions block when at least two policies contributed.
+func hasMultiPolicyProvenance(c *evaluator.Composed) bool {
+	return c != nil && len(c.Contributions) >= 2
+}
+
+// renderContributions writes a compact block listing each policy that
+// contributed to the composed decision, the rule path that matched within
+// that policy, and either the capabilities it granted or a DENIED marker.
+// The block is indented to align under the failure/verbose detail lines.
+func (t *Terminal) renderContributions(c *evaluator.Composed) {
+	if c == nil || len(c.Contributions) == 0 {
+		return
+	}
+	dim := color.New(color.Faint)
+	red := color.New(color.FgRed)
+
+	dim.Fprintln(t.Writer, "      contributions:")
+	for _, contrib := range c.Contributions {
+		name := strings.TrimSuffix(filepath.Base(contrib.PolicyFile), ".hcl")
+		if contrib.IsDeny {
+			red.Fprintf(t.Writer, "        - %s (%s) DENIED\n", name, contrib.RulePath)
+			continue
+		}
+		grants := nonDenyCapabilities(contrib.Capabilities)
+		dim.Fprintf(t.Writer, "        - %s (%s) granted %v\n", name, contrib.RulePath, grants)
+	}
+}
+
+// nonDenyCapabilities returns the capability list with any "deny" sentinel
+// stripped, sorted for deterministic output. Used by the contributions
+// renderer so downstream test assertions and golden snapshots are stable.
+func nonDenyCapabilities(caps []string) []string {
+	out := make([]string, 0, len(caps))
+	for _, c := range caps {
+		if c == "deny" {
+			continue
+		}
+		out = append(out, c)
+	}
+	sort.Strings(out)
+	return out
 }
