@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,12 +23,20 @@ func LoadFile(path string) (*Spec, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 
-	// Resolve policy paths relative to spec file
+	// Resolve relative policy paths against the spec file's directory.
+	// Sibling-directory layouts (e.g. ../policies/foo.hcl from a specs/ dir)
+	// are a legitimate convention, so `..` segments are allowed — the spec
+	// author is the user, not an untrusted input.
 	dir := filepath.Dir(path)
 	for i, p := range spec.Policies {
-		if !filepath.IsAbs(p.Path) {
-			spec.Policies[i].Path = filepath.Join(dir, p.Path)
+		if p.Path == "" {
+			return nil, fmt.Errorf("%s: policies[%d]: empty path", path, i)
 		}
+		if filepath.IsAbs(p.Path) {
+			spec.Policies[i].Path = filepath.Clean(p.Path)
+			continue
+		}
+		spec.Policies[i].Path = filepath.Join(dir, filepath.Clean(p.Path))
 	}
 
 	return spec, nil
@@ -36,7 +45,9 @@ func LoadFile(path string) (*Spec, error) {
 // Load parses and validates a spec from raw YAML bytes.
 func Load(data []byte) (*Spec, error) {
 	var s Spec
-	if err := yaml.Unmarshal(data, &s); err != nil {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&s); err != nil {
 		return nil, fmt.Errorf("parsing YAML: %w", err)
 	}
 

@@ -2,8 +2,10 @@ package parser
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -147,16 +149,184 @@ path "secret/foo" {
 }
 
 func TestDecodeParamMap_Null(t *testing.T) {
-	result := decodeParamMap(cty.NilVal)
+	result, diags := decodeParamMap("allowed_parameters", cty.NullVal(cty.DynamicPseudoType), hcl.Range{})
 	if result != nil {
 		t.Errorf("expected nil for null value, got %v", result)
+	}
+	if diags.HasErrors() {
+		t.Errorf("unexpected diags: %s", diags.Error())
 	}
 }
 
 func TestDecodeStringList_Null(t *testing.T) {
-	result := decodeStringList(cty.NilVal)
+	result, diags := decodeStringList("required_parameters", cty.NullVal(cty.DynamicPseudoType), hcl.Range{})
 	if result != nil {
 		t.Errorf("expected nil for null value, got %v", result)
+	}
+	if diags.HasErrors() {
+		t.Errorf("unexpected diags: %s", diags.Error())
+	}
+}
+
+func TestParsePolicy_NonStringParamElement(t *testing.T) {
+	src := []byte(`
+path "secret/foo" {
+  capabilities       = ["read"]
+  allowed_parameters = { "foo" = [1, 2] }
+}
+`)
+	_, err := ParsePolicy("bad.hcl", src)
+	if err == nil {
+		t.Fatal("expected error for numeric element in allowed_parameters")
+	}
+	if !strings.Contains(err.Error(), "element must be a string") {
+		t.Errorf("error = %q, want to mention string element", err.Error())
+	}
+}
+
+func TestParsePolicy_AllowedParamsNotMap(t *testing.T) {
+	src := []byte(`
+path "secret/foo" {
+  capabilities       = ["read"]
+  allowed_parameters = ["foo", "bar"]
+}
+`)
+	_, err := ParsePolicy("bad.hcl", src)
+	if err == nil {
+		t.Fatal("expected error when allowed_parameters is a list")
+	}
+	if !strings.Contains(err.Error(), "must be a map") {
+		t.Errorf("error = %q, want to mention map", err.Error())
+	}
+}
+
+func TestParsePolicy_ParamValueNotList(t *testing.T) {
+	src := []byte(`
+path "secret/foo" {
+  capabilities       = ["read"]
+  allowed_parameters = { "foo" = "bar" }
+}
+`)
+	_, err := ParsePolicy("bad.hcl", src)
+	if err == nil {
+		t.Fatal("expected error when parameter value is a string")
+	}
+	if !strings.Contains(err.Error(), "must be a list") {
+		t.Errorf("error = %q, want to mention list", err.Error())
+	}
+}
+
+func TestParsePolicy_RequiredParamsNotList(t *testing.T) {
+	src := []byte(`
+path "secret/foo" {
+  capabilities        = ["read"]
+  required_parameters = "foo"
+}
+`)
+	_, err := ParsePolicy("bad.hcl", src)
+	if err == nil {
+		t.Fatal("expected error when required_parameters is not a list")
+	}
+	if !strings.Contains(err.Error(), "must be a list") {
+		t.Errorf("error = %q, want to mention list", err.Error())
+	}
+}
+
+func TestParsePolicy_UnknownTopLevelBlock(t *testing.T) {
+	src := []byte(`foo "x" { capabilities = ["read"] }`)
+	_, err := ParsePolicy("bad.hcl", src)
+	if err == nil {
+		t.Fatal("expected error for unknown top-level block type")
+	}
+}
+
+func TestParsePolicyFileDiag_MissingFile(t *testing.T) {
+	_, parser, diags := ParsePolicyFileDiag("/definitely/not/a/real/path.hcl")
+	if !diags.HasErrors() {
+		t.Fatal("expected diagnostics for missing file")
+	}
+	if parser == nil {
+		t.Error("expected non-nil parser even on read failure")
+	}
+	if !strings.Contains(diags.Error(), "cannot read policy file") {
+		t.Errorf("diags = %q, want 'cannot read policy file'", diags.Error())
+	}
+}
+
+func TestParsePolicy_EmptyFile(t *testing.T) {
+	p, err := ParsePolicy("empty.hcl", []byte("// just a comment\n"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(p.Paths) != 0 {
+		t.Errorf("got %d paths, want 0", len(p.Paths))
+	}
+}
+
+func TestParsePolicyDiag_MultipleAttrErrorsAccumulate(t *testing.T) {
+	src := []byte(`path "secret/foo" {
+  capabilities        = ["read"]
+  allowed_parameters  = ["wrong"]
+  required_parameters = "also-wrong"
+}
+`)
+	_, _, diags := ParsePolicyDiag("bad.hcl", src)
+	if !diags.HasErrors() {
+		t.Fatal("expected diagnostics")
+	}
+	// Aggregation must surface BOTH errors, not just the first.
+	// diags.Error() only summarizes ("X; and N other diagnostic(s)"),
+	// so iterate the slice directly.
+	var sawMap, sawList bool
+	for _, d := range diags {
+		if strings.Contains(d.Detail, "must be a map") {
+			sawMap = true
+		}
+		if strings.Contains(d.Detail, "must be a list") {
+			sawList = true
+		}
+	}
+	if !sawMap {
+		t.Errorf("missing map error; got %d diags: %s", len(diags), diags.Error())
+	}
+	if !sawList {
+		t.Errorf("missing list error; got %d diags: %s", len(diags), diags.Error())
+	}
+}
+
+func TestParsePolicyDiag_SuccessExposesParser(t *testing.T) {
+	src := []byte(`path "secret/foo" { capabilities = ["read"] }`)
+	p, parser, diags := ParsePolicyDiag("ok.hcl", src)
+	if diags.HasErrors() {
+		t.Fatalf("unexpected diags: %s", diags.Error())
+	}
+	if p == nil || len(p.Paths) != 1 {
+		t.Fatalf("got %v, want one path", p)
+	}
+	if _, ok := parser.Files()["ok.hcl"]; !ok {
+		t.Errorf("parser.Files() missing ok.hcl, got keys: %v", parser.Files())
+	}
+}
+
+func TestParsePolicyDiag_ErrorCarriesSourceRange(t *testing.T) {
+	src := []byte(`path "secret/foo" {
+  capabilities       = ["read"]
+  allowed_parameters = { "foo" = [1] }
+}
+`)
+	_, _, diags := ParsePolicyDiag("bad.hcl", src)
+	if !diags.HasErrors() {
+		t.Fatal("expected diagnostics")
+	}
+	var found bool
+	for _, d := range diags {
+		if d.Subject != nil && d.Subject.Filename == "bad.hcl" && d.Subject.Start.Line > 0 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("no diagnostic carried a source range for bad.hcl; got %s", diags.Error())
 	}
 }
 

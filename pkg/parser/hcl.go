@@ -1,8 +1,8 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/hashicorp/hcl/v2"
@@ -12,13 +12,8 @@ import (
 )
 
 type Policy struct {
-	Filepath string `hcl:"filepath"`
+	Filepath string
 	Paths    []PathRule
-}
-
-type ProcessConfig struct {
-	Type    string   `hcl:"type,label"`
-	Command []string `hcl:"command"`
 }
 
 type PathRule struct {
@@ -49,24 +44,51 @@ func ParsePolicyFile(path string) (*Policy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading policy file: %w", err)
 	}
-
 	return ParsePolicy(path, src)
 }
 
+// ParsePolicyFileDiag is the diagnostics-returning variant of ParsePolicyFile.
+// The returned *hclparse.Parser's Files() map can be passed to
+// hcl.NewDiagnosticTextWriter for pretty source-annotated error output.
+func ParsePolicyFileDiag(path string) (*Policy, *hclparse.Parser, hcl.Diagnostics) {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return nil, hclparse.NewParser(), hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "cannot read policy file",
+			Detail:   err.Error(),
+		}}
+	}
+	return ParsePolicyDiag(path, src)
+}
+
+// ParsePolicy parses an HCL policy and returns a flat error. Callers that
+// want rich source-annotated diagnostics should use ParsePolicyDiag instead.
 func ParsePolicy(filename string, src []byte) (*Policy, error) {
-	parse := hclparse.NewParser()
-	file, diags := parse.ParseHCL(src, filename)
+	p, _, diags := ParsePolicyDiag(filename, src)
 	if diags.HasErrors() {
-		return nil, fmt.Errorf("parsing HCL: %s", diags.Error())
+		return nil, errors.New(diags.Error())
+	}
+	return p, nil
+}
+
+// ParsePolicyDiag parses an HCL policy and returns rich diagnostics plus the
+// underlying parser. The parser's Files() map can be used with
+// hcl.NewDiagnosticTextWriter to render errors with file:line:col context.
+func ParsePolicyDiag(filename string, src []byte) (*Policy, *hclparse.Parser, hcl.Diagnostics) {
+	parser := hclparse.NewParser()
+	file, diags := parser.ParseHCL(src, filename)
+	if diags.HasErrors() {
+		return nil, parser, diags
 	}
 
 	var raw hclPolicy
-	diags = gohcl.DecodeBody(file.Body, nil, &raw)
-	if diags.HasErrors() {
-		return nil, fmt.Errorf("decoding policy: %s", diags.Error())
+	if d := gohcl.DecodeBody(file.Body, nil, &raw); d.HasErrors() {
+		return nil, parser, d
 	}
 
 	policy := &Policy{Filepath: filename}
+	var allDiags hcl.Diagnostics
 	for _, rp := range raw.Path {
 		pr := PathRule{
 			Path:         rp.Path,
@@ -79,68 +101,117 @@ func ParsePolicy(filename string, src []byte) (*Policy, error) {
 			pr.MaxWrappingTTL = *rp.MaxWrappingTTL
 		}
 
-		// Process remaining fields for allowed/denied parameters
 		if rp.Remain != nil {
-			attrs, diags := rp.Remain.JustAttributes()
-			if diags.HasErrors() {
-				log.Printf("Error processing remaining fields for path %s: %s", rp.Path, diags.Error())
-				continue
-			}
+			attrs, d := rp.Remain.JustAttributes()
+			allDiags = append(allDiags, d...)
 
 			for name, attr := range attrs {
-				val, diags := attr.Expr.Value(nil)
-				if diags.HasErrors() {
-					log.Printf("Error evaluating attribute %s for path %s: %s", name, rp.Path, diags.Error())
-					return nil, fmt.Errorf("evaluating %q in path %q: %s", name, rp.Path, diags.Error())
+				rng := attr.Expr.Range()
+				val, vd := attr.Expr.Value(nil)
+				if vd.HasErrors() {
+					allDiags = append(allDiags, vd...)
+					continue
 				}
 
 				switch name {
 				case "allowed_parameters":
-					pr.AllowedParameters = decodeParamMap(val)
-					log.Printf("Decoded allowed_parameters for path %s: %v", rp.Path, pr.AllowedParameters)
+					m, md := decodeParamMap(name, val, rng)
+					allDiags = append(allDiags, md...)
+					pr.AllowedParameters = m
 				case "denied_parameters":
-					pr.DeniedParameters = decodeParamMap(val)
-					log.Printf("Decoded denied_parameters for path %s: %v", rp.Path, pr.DeniedParameters)
+					m, md := decodeParamMap(name, val, rng)
+					allDiags = append(allDiags, md...)
+					pr.DeniedParameters = m
 				case "required_parameters":
-					pr.RequiredParameters = decodeStringList(val)
-					log.Printf("Decoded required_parameters for path %s: %v", rp.Path, pr.RequiredParameters)
-				default:
-					log.Printf("Unknown attribute %s in path %s", name, rp.Path)
+					l, ld := decodeStringList(name, val, rng)
+					allDiags = append(allDiags, ld...)
+					pr.RequiredParameters = l
 				}
 			}
 		}
 
 		policy.Paths = append(policy.Paths, pr)
 	}
-	return policy, nil
+
+	return policy, parser, allDiags
 }
 
-func decodeParamMap(val cty.Value) map[string][]string {
+func decodeParamMap(name string, val cty.Value, rng hcl.Range) (map[string][]string, hcl.Diagnostics) {
 	if val.IsNull() || !val.IsKnown() {
-		return nil
+		return nil, nil
 	}
+	t := val.Type()
+	if !t.IsObjectType() && !t.IsMapType() {
+		return nil, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "invalid parameter map",
+			Detail:   fmt.Sprintf("%q must be a map of string to list of strings, got %s", name, t.FriendlyName()),
+			Subject:  &rng,
+		}}
+	}
+	var diags hcl.Diagnostics
 	result := make(map[string][]string)
 	for key, v := range val.AsValueMap() {
-		var values []string
-		if v.Type().IsTupleType() || v.Type().IsListType() || v.Type().IsSetType() {
-			for it := v.ElementIterator(); it.Next(); {
-				_, elem := it.Element()
-				values = append(values, elem.AsString())
-			}
+		vt := v.Type()
+		if !(vt.IsTupleType() || vt.IsListType() || vt.IsSetType()) {
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "invalid parameter value",
+				Detail:   fmt.Sprintf("%q[%q] must be a list, got %s", name, key, vt.FriendlyName()),
+				Subject:  &rng,
+			})
+			continue
 		}
-		result[key] = values
+		var values []string
+		ok := true
+		for it := v.ElementIterator(); it.Next(); {
+			_, elem := it.Element()
+			if elem.Type() != cty.String {
+				diags = append(diags, &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "invalid parameter element",
+					Detail:   fmt.Sprintf("%q[%q] element must be a string, got %s", name, key, elem.Type().FriendlyName()),
+					Subject:  &rng,
+				})
+				ok = false
+				break
+			}
+			values = append(values, elem.AsString())
+		}
+		if ok {
+			result[key] = values
+		}
 	}
-	return result
+	return result, diags
 }
 
-func decodeStringList(val cty.Value) []string {
+func decodeStringList(name string, val cty.Value, rng hcl.Range) ([]string, hcl.Diagnostics) {
 	if val.IsNull() || !val.IsKnown() {
-		return nil
+		return nil, nil
 	}
+	t := val.Type()
+	if !(t.IsTupleType() || t.IsListType() || t.IsSetType()) {
+		return nil, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "invalid list",
+			Detail:   fmt.Sprintf("%q must be a list of strings, got %s", name, t.FriendlyName()),
+			Subject:  &rng,
+		}}
+	}
+	var diags hcl.Diagnostics
 	var result []string
 	for it := val.ElementIterator(); it.Next(); {
 		_, elem := it.Element()
+		if elem.Type() != cty.String {
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "invalid list element",
+				Detail:   fmt.Sprintf("%q element must be a string, got %s", name, elem.Type().FriendlyName()),
+				Subject:  &rng,
+			})
+			continue
+		}
 		result = append(result, elem.AsString())
 	}
-	return result
+	return result, diags
 }
