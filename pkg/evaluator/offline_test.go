@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/timkrebs/custos/pkg/parser"
@@ -166,56 +167,11 @@ func TestMatchPath(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// selectBestMatches tests
-// ---------------------------------------------------------------------------
-
-func TestSelectBestMatches(t *testing.T) {
-	t.Run("exact beats glob and prefix", func(t *testing.T) {
-		candidates := []matchCandidate{
-			{policyFile: "a.hcl", mtype: matchPrefix, specificity: 10},
-			{policyFile: "b.hcl", mtype: matchGlob, specificity: 12},
-			{policyFile: "c.hcl", mtype: matchExact, specificity: 14},
-		}
-		best := selectBestMatches(candidates)
-		if len(best) != 1 || best[0].policyFile != "c.hcl" {
-			t.Fatalf("expected exact match c.hcl, got %+v", best)
-		}
-	})
-
-	t.Run("glob beats prefix", func(t *testing.T) {
-		candidates := []matchCandidate{
-			{policyFile: "a.hcl", mtype: matchPrefix, specificity: 15},
-			{policyFile: "b.hcl", mtype: matchGlob, specificity: 10},
-		}
-		best := selectBestMatches(candidates)
-		if len(best) != 1 || best[0].policyFile != "b.hcl" {
-			t.Fatalf("expected glob match b.hcl, got %+v", best)
-		}
-	})
-
-	t.Run("higher specificity wins within same type", func(t *testing.T) {
-		candidates := []matchCandidate{
-			{policyFile: "short.hcl", mtype: matchPrefix, specificity: 5},
-			{policyFile: "long.hcl", mtype: matchPrefix, specificity: 15},
-		}
-		best := selectBestMatches(candidates)
-		if len(best) != 1 || best[0].policyFile != "long.hcl" {
-			t.Fatalf("expected longer prefix long.hcl, got %+v", best)
-		}
-	})
-
-	t.Run("multiple matches at same tier are all returned", func(t *testing.T) {
-		candidates := []matchCandidate{
-			{policyFile: "a.hcl", mtype: matchExact, specificity: 10},
-			{policyFile: "b.hcl", mtype: matchExact, specificity: 10},
-		}
-		best := selectBestMatches(candidates)
-		if len(best) != 2 {
-			t.Fatalf("expected 2 matches, got %d", len(best))
-		}
-	})
-}
+// Per-policy best-match selection is covered in composer_test.go via
+// TestCompose_WithinPolicyMostSpecificWins and the cross-policy regression
+// tests. The earlier TestSelectBestMatches targeted a global-best selector
+// that no longer exists; the Compose refactor replaced it with per-policy
+// match selection to conform to Vault composition semantics.
 
 // ---------------------------------------------------------------------------
 // Evaluate tests
@@ -459,5 +415,144 @@ func TestEvaluateSuite(t *testing.T) {
 	}
 	if sr.Results[3].Pass {
 		t.Error("test 3 (fails expectation) should fail")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// End-to-end composition test
+// ---------------------------------------------------------------------------
+
+// TestComposed_EndToEnd_FullPipeline exercises the complete spec-load ->
+// policy-parse -> suite-evaluate pipeline against testdata/specs/composed.spec.yaml.
+// It is the acceptance test for the composer: every test case in the spec
+// must pass, and multi-policy cases must populate Result.Composed with the
+// expected provenance.
+func TestComposed_EndToEnd_FullPipeline(t *testing.T) {
+	specPath := filepath.Join("..", "..", "testdata", "specs", "composed.spec.yaml")
+
+	s, err := spec.LoadFile(specPath)
+	if err != nil {
+		t.Fatalf("spec.LoadFile(%s): %v", specPath, err)
+	}
+
+	policies := make([]parser.Policy, 0, len(s.Policies))
+	for _, ref := range s.Policies {
+		p, err := parser.ParsePolicyFile(ref.Path)
+		if err != nil {
+			t.Fatalf("parser.ParsePolicyFile(%s): %v", ref.Path, err)
+		}
+		policies = append(policies, *p)
+	}
+
+	sr := EvaluateSuite(policies, s)
+
+	if sr.Failed != 0 {
+		for _, r := range sr.Results {
+			if !r.Pass {
+				t.Errorf("FAIL %q: path=%s caps=%v expect=%s allowed=%v explanation=%s",
+					r.Test.Name, r.Test.Path, r.Test.Capabilities, r.Test.Expect,
+					r.Result.Allowed, r.Result.Explanation)
+			}
+		}
+		t.Fatalf("composed.spec.yaml had %d failing test(s), want 0", sr.Failed)
+	}
+	if sr.Passed != len(s.Tests) {
+		t.Errorf("Passed = %d, want %d", sr.Passed, len(s.Tests))
+	}
+}
+
+// TestComposed_ProvenanceOnMultiPolicyAllow verifies that composed results
+// retain provenance for grants contributed by more than one policy. It
+// targets the composed.spec.yaml case where readonly.hcl contributes [read]
+// via secret/* and payment-svc.hcl also contributes [read, list] via
+// secret/data/payment-svc/*; both must appear in GrantedBy["read"].
+func TestComposed_ProvenanceOnMultiPolicyAllow(t *testing.T) {
+	readonly, err := parser.ParsePolicyFile(filepath.Join("..", "..", "testdata", "policies", "readonly.hcl"))
+	if err != nil {
+		t.Fatalf("parse readonly: %v", err)
+	}
+	paymentSvc, err := parser.ParsePolicyFile(filepath.Join("..", "..", "testdata", "policies", "payment-svc.hcl"))
+	if err != nil {
+		t.Fatalf("parse payment-svc: %v", err)
+	}
+
+	tc := spec.TestCase{
+		Name:         "multi-policy read",
+		Path:         "secret/data/payment-svc/db-creds",
+		Capabilities: []string{"read"},
+		Expect:       "allow",
+	}
+
+	result := Evaluate([]parser.Policy{*readonly, *paymentSvc}, tc)
+
+	if !result.Allowed {
+		t.Fatalf("expected allow, got deny: %s", result.Explanation)
+	}
+	if result.Composed == nil {
+		t.Fatal("expected Composed to be populated")
+	}
+	if len(result.Composed.Contributions) != 2 {
+		t.Errorf("expected contributions from both policies, got %d", len(result.Composed.Contributions))
+	}
+	readGrantors := result.Composed.GrantedBy["read"]
+	if len(readGrantors) != 2 {
+		t.Errorf("expected 'read' granted by 2 policies, got %d: %+v", len(readGrantors), readGrantors)
+	}
+	sawReadonly := false
+	sawPaymentSvc := false
+	for _, contrib := range readGrantors {
+		if filepath.Base(contrib.PolicyFile) == "readonly.hcl" {
+			sawReadonly = true
+		}
+		if filepath.Base(contrib.PolicyFile) == "payment-svc.hcl" {
+			sawPaymentSvc = true
+		}
+	}
+	if !sawReadonly || !sawPaymentSvc {
+		t.Errorf("missing provenance: readonly=%v paymentSvc=%v", sawReadonly, sawPaymentSvc)
+	}
+}
+
+// TestComposed_ProvenanceOnDenyOverride verifies the billing-denied case
+// from composed.spec.yaml: readonly.hcl grants [read, list] on secret/*
+// while payment-svc.hcl denies secret/data/billing-svc/*. The composed
+// result must be deny and DeniedBy must point at payment-svc.hcl.
+func TestComposed_ProvenanceOnDenyOverride(t *testing.T) {
+	readonly, err := parser.ParsePolicyFile(filepath.Join("..", "..", "testdata", "policies", "readonly.hcl"))
+	if err != nil {
+		t.Fatalf("parse readonly: %v", err)
+	}
+	paymentSvc, err := parser.ParsePolicyFile(filepath.Join("..", "..", "testdata", "policies", "payment-svc.hcl"))
+	if err != nil {
+		t.Fatalf("parse payment-svc: %v", err)
+	}
+
+	tc := spec.TestCase{
+		Name:         "billing denied",
+		Path:         "secret/data/billing-svc/api-key",
+		Capabilities: []string{"read"},
+		Expect:       "deny",
+	}
+
+	result := Evaluate([]parser.Policy{*readonly, *paymentSvc}, tc)
+
+	if result.Allowed {
+		t.Fatalf("expected deny, got allow: %s", result.Explanation)
+	}
+	if result.Composed == nil {
+		t.Fatal("expected Composed to be populated")
+	}
+	if !result.Composed.Denied {
+		t.Error("expected Composed.Denied to be true")
+	}
+	if len(result.Composed.DeniedBy) != 1 {
+		t.Fatalf("expected 1 deny contribution, got %d", len(result.Composed.DeniedBy))
+	}
+	if filepath.Base(result.Composed.DeniedBy[0].PolicyFile) != "payment-svc.hcl" {
+		t.Errorf("DeniedBy[0].PolicyFile = %q, want payment-svc.hcl", result.Composed.DeniedBy[0].PolicyFile)
+	}
+	// Both policies should appear in Contributions (grant + deny).
+	if len(result.Composed.Contributions) != 2 {
+		t.Errorf("expected both policies in Contributions, got %d", len(result.Composed.Contributions))
 	}
 }
