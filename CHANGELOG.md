@@ -12,6 +12,22 @@ moved under a version header when a release is cut.
 
 ### Added
 
+- **JSON reporter** (`pkg/reporter/json.go`) — new output format for
+  programmatic consumption. Emits a stable, versioned
+  (`schema_version: "1.0"`) document containing the suite name,
+  duration, summary counts, top-level warnings, and a `results` array
+  with per-test `name`, `path`, `capabilities`, `expected`, `actual`,
+  `pass`, `duration_seconds`, `explanation`, `matched_rule`, and a full
+  `composed` provenance sub-object (`granted`, `denied`,
+  `contributions`, `denied_by`). Array fields are always emitted as
+  arrays (never null) so `jq` filters do not need null-checking, and
+  field order is deterministic because the document is built from
+  Go structs. Pretty-printed by default; `--compact` emits single-line
+  output for line-oriented tools (`custos test -f spec.yaml
+  --format=json --compact >> results.ndjson`).
+- **`--compact` flag on `custos test`** — toggles compact single-line
+  output when `--format=json` is set. Ignored as a no-op for other
+  formats so users can add it preemptively without error.
 - **JUnit XML reporter** (`pkg/reporter/junit.go`) — new output format for
   CI/CD systems. Emits a standard `<testsuites>` / `<testsuite>` /
   `<testcase>` / `<failure>` document with per-test timing (microsecond
@@ -20,15 +36,16 @@ moved under a version header when a release is cut.
   expected/got, path, capabilities, matched rule, explanation, and
   multi-policy contribution provenance.
 - **`--format` flag on `custos test`** — selects the output format.
-  Accepts `terminal` (default) or `junit`. Unknown values fail fast with
-  an error listing supported options. JUnit output is written as a
-  complete XML document to stdout so it can be redirected to a file
-  (`custos test -f spec.yaml --format=junit > results.xml`) and consumed
-  by dorny/test-reporter, Jenkins, GitLab, and GitHub Actions test
-  reporters without further processing.
+  Accepts `terminal` (default), `junit`, or `json`. Unknown values fail
+  fast with an error listing supported options. JUnit output is written
+  as a complete XML document to stdout so it can be redirected to a
+  file (`custos test -f spec.yaml --format=junit > results.xml`) and
+  consumed by dorny/test-reporter, Jenkins, GitLab, and GitHub Actions
+  test reporters without further processing.
 - **`reporter.Reporter` interface + `reporter.New` factory** — unified
-  entry point for format selection so future formats (JSON, SARIF) can
-  be added without touching the CLI.
+  entry point for format selection; already hosts terminal, JUnit, and
+  JSON reporters, and future formats (SARIF) can be added without
+  touching the CLI.
 - **Per-test timing** (`evaluator.TestResult.Duration`,
   `evaluator.SuiteResult.Duration`) — measured by `EvaluateSuite` via
   `time.Now()` around each `Evaluate` call. Consumed by JUnit; ignored
