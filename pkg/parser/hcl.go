@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -24,6 +25,12 @@ type PathRule struct {
 	RequiredParameters []string
 	MinWrappingTTL     string
 	MaxWrappingTTL     string
+
+	// Line is the 1-based source line of the `path` block header, used by
+	// the analyzer to attach findings to a specific location in the HCL
+	// file. Zero when the parser could not extract a position (e.g. when
+	// the body is not backed by hclsyntax — a theoretical case today).
+	Line int
 }
 
 // hclPolicy is the top-level HCL decode target.
@@ -87,12 +94,28 @@ func ParsePolicyDiag(filename string, src []byte) (*Policy, *hclparse.Parser, hc
 		return nil, parser, d
 	}
 
+	// Collect source positions for each `path` block so findings emitted
+	// by the analyzer can point at the exact line in the .hcl file. The
+	// blocks in hclsyntax.Body are in source order and gohcl.DecodeBody
+	// preserves that order, so we can index them 1:1 with raw.Path.
+	var pathBlockRanges []hcl.Range
+	if hs, ok := file.Body.(*hclsyntax.Body); ok {
+		for _, blk := range hs.Blocks {
+			if blk.Type == "path" {
+				pathBlockRanges = append(pathBlockRanges, blk.DefRange())
+			}
+		}
+	}
+
 	policy := &Policy{Filepath: filename}
 	var allDiags hcl.Diagnostics
-	for _, rp := range raw.Path {
+	for i, rp := range raw.Path {
 		pr := PathRule{
 			Path:         rp.Path,
 			Capabilities: rp.Capabilities,
+		}
+		if i < len(pathBlockRanges) {
+			pr.Line = pathBlockRanges[i].Start.Line
 		}
 		if rp.MinWrappingTTL != nil {
 			pr.MinWrappingTTL = *rp.MinWrappingTTL

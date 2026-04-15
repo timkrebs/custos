@@ -12,6 +12,33 @@ moved under a version header when a release is cut.
 
 ### Added
 
+- **Overprivilege analyzer** (`pkg/analyzer/overprivilege.go`) — new
+  package implementing five static checks against parsed Vault
+  policies: `wildcard_paths` (warning, trailing `*` with 3+
+  capabilities), `sudo_capability` (error, `sudo` outside `sys/` and
+  `auth/token/`), `root_token_create` (error, `create` on
+  `auth/token/create`), `policy_escalation` (error, `update`/`create`
+  on `sys/policy/` or `sys/policies/acl/`), and `secret_destroy`
+  (warning, destructive ops on `secret/destroy/` or `secret/metadata/`).
+  `Analyze(policies, rules)` returns `[]Finding` with stable
+  `check`, `severity`, `message`, `file`, `line`, `path`, and
+  `rule_capabilities` fields, deterministically sorted by
+  file/line/check. Findings are independent of test pass/fail state.
+- **Per-check configuration via the `analyze:` section** in spec YAML —
+  `AnalyzeCheck` gained two new fields so operators can keep broad
+  defaults while whitelisting legitimate grants. `disabled: true`
+  turns a check off entirely, and `allow_paths: [...]` suppresses a
+  check for specific policy paths using Vault-style glob semantics
+  (trailing `*`, `+` for single segments, otherwise exact). This is
+  the escape hatch for legitimate `sudo` on a custom admin endpoint,
+  a broad wildcard on an internal secret tree, etc. The existing
+  `severity:` field can also be used to bump a warning check up to
+  error (or vice versa) without forking the code.
+- **Source line numbers on parsed path rules** — `parser.PathRule`
+  gained a `Line int` field populated from the HCL block's `DefRange`
+  so analyzer findings (and future lint tooling) can point at the
+  exact offending `path` block in the `.hcl` file. Blocks are matched
+  to parsed rules by source order, which gohcl preserves.
 - **JSON reporter** (`pkg/reporter/json.go`) — new output format for
   programmatic consumption. Emits a stable, versioned
   (`schema_version: "1.0"`) document containing the suite name,

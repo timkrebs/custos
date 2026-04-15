@@ -119,17 +119,45 @@ The offline evaluator (`pkg/evaluator`) mirrors Vault's actual ACL evaluation lo
 
 ## Security analysis
 
-The analyzer performs static analysis on policy HCL (planned for v0.3.0):
+The analyzer (`pkg/analyzer`) performs static analysis on policy HCL
+independently of test assertions. Findings carry a `check`, `severity`,
+`message`, `file`, `line`, `path`, and the offending rule's
+capabilities, so editors and CI annotators can jump straight to the
+violating `path` block.
 
 | Check | Detection | Severity |
 |:------|:----------|:---------|
 | `wildcard_paths` | Paths ending in `*` with 3+ capabilities | Warning |
-| `sudo_capability` | `sudo` on any path not under `sys/` | Error |
+| `sudo_capability` | `sudo` on any path not under `sys/` or `auth/token/` | Error |
 | `root_token_create` | `create` on `auth/token/create` | Error |
-| `policy_escalation` | `update` on `sys/policy/*` | Error |
-| `secret_destroy` | `delete` on `secret/destroy/*` | Warning |
-| `coverage` | Percentage of paths with test assertions | Info |
-| `conflicts` | Overlapping allow/deny across policies | Warning |
+| `policy_escalation` | `update` / `create` on `sys/policy/` or `sys/policies/acl/` | Error |
+| `secret_destroy` | Destructive ops on `secret/destroy/` or `secret/metadata/` | Warning |
+| `coverage` | Percentage of paths with test assertions | Info (planned) |
+| `conflicts` | Overlapping allow/deny across policies | Warning (planned) |
+
+Operators configure the analyzer via the `analyze:` section of the spec
+YAML. Each entry is keyed by `check:` and supports:
+
+- `disabled: true` — turn the check off entirely.
+- `allow_paths: [...]` — per-check path exceptions with Vault-style
+  glob matching (`*` trailing prefix, `+` single segment, otherwise
+  exact). This is how a break-glass admin policy can keep a legitimate
+  `sudo` grant or wildcard without drowning the rest of the report in
+  noise.
+- `severity: error|warning|info` — override the default severity (for
+  example, bumping `secret_destroy` to `error` in a tightly regulated
+  environment).
+
+```yaml
+analyze:
+  - check: sudo_capability
+    allow_paths:
+      - database/config/rotate
+  - check: wildcard_paths
+    disabled: true
+  - check: secret_destroy
+    severity: error
+```
 
 ## Key dependencies
 

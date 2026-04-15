@@ -205,19 +205,23 @@ tests:
     expect: deny
 
 # Optional: security analysis configuration
+# Each entry is keyed by check ID. Built-in overprivilege checks run by
+# default at their baseline severity; use entries below to disable,
+# whitelist specific paths, or override severity.
 analyze:
-  - check: overprivilege
-    warn_on:
-      - wildcard_paths      # "secret/*" with broad capabilities
-      - sudo_capability     # sudo outside of sys/ admin paths
-      - root_token_create   # auth/token/create with no_parent
-      - policy_escalation   # sys/policy/* with update
+  - check: sudo_capability
+    allow_paths:
+      - database/config/rotate   # legitimate sudo use, keep it quiet
+  - check: wildcard_paths
+    disabled: true               # this codebase intentionally uses broad wildcards
+  - check: secret_destroy
+    severity: error              # bump the default warning to error
 
   - check: coverage
-    min_coverage: 80%       # percentage of policy paths with test assertions
+    min_coverage: 80%            # planned: percentage of policy paths with test assertions
 
   - check: conflicts
-    severity: warning       # flag overlapping deny/allow across composed policies
+    severity: warning            # planned: flag overlapping deny/allow across composed policies
 ```
 
 ### 3. Run tests
