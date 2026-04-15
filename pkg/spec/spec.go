@@ -57,6 +57,20 @@ type AnalyzeCheck struct {
 	WarnOn      string      `yaml:"warn_on,omitempty"`
 	MinCoverage *Percentage `yaml:"min_coverage,omitempty"`
 	Severity    string      `yaml:"severity,omitempty"`
+
+	// Disabled turns the check off entirely. Useful when a team knows a
+	// given rule does not apply to their policy layout and wants to keep
+	// noise out of the report without removing the entry from the spec.
+	Disabled bool `yaml:"disabled,omitempty"`
+
+	// AllowPaths is the per-check exception list. Entries are matched
+	// against the offending policy path with Vault-style glob semantics
+	// (trailing `*` = prefix match, `+` = single segment, otherwise
+	// exact). An allow_paths entry that matches causes the check to
+	// suppress the finding for that path — this is how an operator
+	// legitimately whitelists a sudo grant on `sys/unseal` or a wildcard
+	// on an internal secret tree.
+	AllowPaths []string `yaml:"allow_paths,omitempty"`
 }
 
 // Percentage is a float in [0, 100] that accepts both numeric forms (e.g.
