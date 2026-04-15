@@ -26,14 +26,14 @@ func TestAnalyze_OverprivilegedFixture(t *testing.T) {
 	// Expected hits on the fixture, keyed by (check, path) so ordering
 	// changes don't flap the assertion.
 	want := map[string]bool{
-		CheckWildcardPaths + "|secret/*":             true,
-		CheckWildcardPaths + "|database/config/*":    true,
-		CheckSudoCapability + "|secret/*":            true,
-		CheckSudoCapability + "|database/config/*":   true,
-		CheckRootTokenCreate + "|auth/token/create":  true,
+		CheckWildcardPaths + "|secret/*":              true,
+		CheckWildcardPaths + "|database/config/*":     true,
+		CheckSudoCapability + "|secret/*":             true,
+		CheckSudoCapability + "|database/config/*":    true,
+		CheckRootTokenCreate + "|auth/token/create":   true,
 		CheckPolicyEscalation + "|sys/policies/acl/*": true,
-		CheckSecretDestroy + "|secret/destroy/*":     true,
-		CheckSecretDestroy + "|secret/metadata/*":    true,
+		CheckSecretDestroy + "|secret/destroy/*":      true,
+		CheckSecretDestroy + "|secret/metadata/*":     true,
 	}
 
 	got := make(map[string]bool)

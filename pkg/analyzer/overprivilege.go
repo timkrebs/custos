@@ -66,10 +66,10 @@ type Finding struct {
 // checkConfig is the resolved per-check configuration after merging
 // defaults with the user's `analyze` section.
 type checkConfig struct {
-	disabled     bool
-	severity     Severity
-	allowPaths   []string
-	defaultSev   Severity
+	disabled   bool
+	severity   Severity
+	allowPaths []string
+	defaultSev Severity
 }
 
 // defaultSeverities fixes the baseline severity for each built-in check.
