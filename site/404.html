@@ -1,0 +1,1245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>custos — test your Vault ACL policies before they reach prod</title>
+<meta name="viewport" content="width=1280" />
+<meta name="description" content="custos is a CLI that lets you write test specs for your HashiCorp Vault ACL policies, run them offline or against a live Vault, and catch overprivileged access, misconfigurations, and policy conflicts before they ship." />
+<meta name="theme-color" content="#0b0d10" />
+<meta property="og:title" content="custos — Vault policy testing for CI" />
+<meta property="og:description" content="Write test specs for your Vault ACL policies. Catch misconfigurations and overprivileged access before prod." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://custos.dev" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="custos — Vault policy testing for CI" />
+<meta name="twitter:description" content="Write test specs for your Vault ACL policies. Catch misconfigurations and overprivileged access before prod." />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ffd24a'/><text x='16' y='22' font-family='monospace' font-size='18' font-weight='800' text-anchor='middle' fill='%231a1405'>c</text></svg>" />
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#0b0d10"/><rect x="60" y="60" width="80" height="80" rx="18" fill="#ffd24a"/><text x="100" y="126" font-family="monospace" font-size="58" font-weight="800" text-anchor="middle" fill="#1a1405">c</text></svg></template>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0b0d10; --panel:#111418; --elev:#161a20; --elev-2:#1c2129;
+  --border:#1f242c; --border-strong:#2a313b;
+  --fg:#ecedef; --fg-2:#b8bcc4; --fg-3:#8a8f99; --fg-4:#5a606c; --fg-5:#3b404a;
+  /* Vault-y amber/yellow */
+  --acc:#ffd24a;           /* primary */
+  --acc-2:#e4a81f;         /* deeper */
+  --acc-bg:rgba(255,210,74,.08);
+  --acc-bg-2:rgba(255,210,74,.14);
+  --acc-border:rgba(255,210,74,.24);
+  --red:#ff6b6b; --red-bg:rgba(255,107,107,.10); --red-border:rgba(255,107,107,.25);
+  --blue:#79a6ff; --violet:#b28cff; --green:#7fe0a6;
+  --r:6px; --rl:10px;
+  --sans:"Geist",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --mono:"Geist Mono","JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;letter-spacing:-.005em;min-height:100vh}
+body::before{content:"";position:fixed;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.018) 1px,transparent 1px);background-size:26px 26px;pointer-events:none;z-index:0}
+.mono{font-family:var(--mono);font-feature-settings:"ss01","calt"}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+a{color:inherit}
+
+.docnav{position:sticky;top:0;z-index:30;background:rgba(11,13,16,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.docnav-inner{max-width:1280px;margin:0 auto;padding:12px 32px;display:flex;align-items:center;gap:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+.brand .mark{width:22px;height:22px;border-radius:5px;background:linear-gradient(150deg,var(--acc) 0%,var(--acc-2) 100%);display:grid;place-items:center;color:#1a1405;font-weight:800;font-family:var(--mono);font-size:12px;letter-spacing:-.02em;box-shadow:0 0 0 1px rgba(0,0,0,.2) inset,0 4px 14px rgba(255,210,74,.15)}
+.brand-badge{font-family:var(--mono);font-size:10px;color:var(--fg-4);padding:2px 6px;border:1px solid var(--border-strong);border-radius:4px;white-space:nowrap}
+.doc-tabs{display:flex;gap:2px;margin-left:16px;flex-wrap:wrap}
+.doc-tab{padding:6px 9px;font-size:12px;color:var(--fg-3);border-radius:5px;cursor:pointer;font-family:var(--mono);display:flex;align-items:center;gap:7px;white-space:nowrap}
+.doc-tab:hover{color:var(--fg);background:var(--elev)}
+.doc-tab.active{color:var(--acc);background:var(--acc-bg)}
+.doc-tab .idx{font-size:10px;color:var(--fg-4);font-weight:500}
+.doc-tab.active .idx{color:var(--acc)}
+.docnav-spacer{flex:1}
+.top-cta{display:flex;gap:8px;align-items:center}
+.top-meta{font-size:11px;color:var(--fg-4);font-family:var(--mono)}
+.gh-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-2);font-family:var(--mono);padding:5px 10px;border:1px solid var(--border-strong);border-radius:var(--r);white-space:nowrap}
+.gh-link:hover{background:var(--elev);color:var(--fg)}
+.gh-link svg{width:13px;height:13px;fill:currentColor}
+.star{color:var(--acc);white-space:nowrap}
+
+.wrap{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:36px 32px 120px}
+.h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px}
+.h2{font-size:20px;font-weight:600;letter-spacing:-.015em;margin:40px 0 12px}
+.h3{font-size:14px;font-weight:600;margin:20px 0 8px}
+.sub{color:var(--fg-3);font-size:14px;margin:0 0 24px;max-width:720px}
+.kicker{display:inline-block;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--acc);font-family:var(--mono);margin-bottom:14px;white-space:nowrap}
+.muted{color:var(--fg-3)}
+
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:var(--r);font-size:13px;font-weight:500;border:1px solid var(--border-strong);background:var(--elev);color:var(--fg);transition:background 120ms;white-space:nowrap}
+.btn:hover{background:var(--elev-2)}
+.btn-primary{background:var(--acc);color:#1a1405;border-color:transparent;font-weight:600}
+.btn-primary:hover{background:#ffdd6e}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--fg-2)}
+.btn-ghost:hover{background:var(--elev)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.icon{width:14px;height:14px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+.badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:3px;border:1px solid var(--border-strong);background:var(--elev);color:var(--fg-2);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.badge-acc{color:var(--acc);border-color:var(--acc-border);background:var(--acc-bg)}
+.badge-red{color:var(--red);border-color:var(--red-border);background:var(--red-bg)}
+.badge-green{color:var(--green);border-color:rgba(127,224,166,.25);background:rgba(127,224,166,.08)}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--rl)}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.card-header .title{font-size:12px;font-family:var(--mono);color:var(--fg-2);display:flex;align-items:center;gap:8px}
+.card-header .title .dot{width:8px;height:8px;border-radius:50%;background:var(--acc)}
+
+pre{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--fg-2);margin:0;padding:16px 20px;overflow-x:auto;background:var(--panel);border-radius:0 0 var(--rl) var(--rl)}
+code.inline,.mono-i{font-family:var(--mono);font-size:12.5px;color:var(--acc);background:var(--acc-bg);padding:1px 6px;border-radius:3px;border:1px solid var(--acc-border)}
+.tk-k{color:#c5a3ff}.tk-s{color:#a8e6b5}.tk-n{color:#ffd24a}.tk-c{color:var(--fg-4);font-style:italic}.tk-p{color:#7aa7ff}.tk-b{color:var(--acc)}.tk-op{color:var(--fg-4)}.tk-ctl{color:#ff9e5f}
+
+.screens{display:none}
+.screens.active{display:block}
+
+/* ===== Landing ===== */
+.lp-hero{padding:56px 0 40px;max-width:920px;position:relative}
+.lp-hero .shield{position:absolute;right:-40px;top:0;width:260px;opacity:.09;pointer-events:none}
+.lp-hero h1{font-size:64px;line-height:1;font-weight:600;letter-spacing:-.035em;margin:18px 0 22px}
+.lp-hero h1 em{font-style:normal;color:var(--acc)}
+.lp-hero .tag{font-size:17px;color:var(--fg-3);max-width:640px;margin:0 0 28px;line-height:1.55}
+.lp-cta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lp-cta .btn{padding:11px 18px;font-size:14px}
+.inst-strip{margin-top:14px;display:flex;align-items:center;gap:14px;font-size:12px;color:var(--fg-4);font-family:var(--mono);padding:10px 14px;background:var(--elev);border:1px solid var(--border);border-radius:var(--r);max-width:520px;white-space:nowrap}
+.inst-strip > span{white-space:nowrap}
+.inst-strip .prompt{color:var(--acc)}
+.inst-strip .cp{margin-left:auto;color:var(--fg-3);cursor:pointer}
+.inst-strip .cp:hover{color:var(--fg)}
+
+.lp-term{margin:32px 0 0;border:1px solid var(--border);border-radius:var(--rl);background:var(--panel);overflow:hidden;max-width:880px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.lp-term-head{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--elev)}
+.lp-term-head .dot{width:10px;height:10px;border-radius:50%}
+.lp-term-head .d1{background:#ff5f57}.lp-term-head .d2{background:#febc2e}.lp-term-head .d3{background:#28c840}
+.lp-term-head .ttl{font-family:var(--mono);font-size:11px;color:var(--fg-3);margin-left:8px;white-space:nowrap}
+.lp-term-body{padding:18px 22px;font-family:var(--mono);font-size:12.5px;line-height:1.75;white-space:pre;overflow-x:auto}
+.lp-term .ps{color:var(--acc)}
+.lp-term .cmd{color:var(--fg)}
+.lp-term .out{color:var(--fg-3)}
+.lp-term .ok{color:var(--green)}
+.lp-term .fail{color:var(--red)}
+.lp-term .dim{color:var(--fg-4)}
+.lp-term .info{color:var(--blue)}
+.lp-term .warn{color:var(--acc)}
+
+.lp-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:var(--rl);overflow:hidden;border:1px solid var(--border);margin:56px 0}
+.lp-strip .cell{padding:20px 22px;background:var(--panel)}
+.lp-strip .k{font-size:11px;color:var(--fg-4);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.lp-strip .v{font-size:26px;font-weight:600;letter-spacing:-.02em;font-family:var(--mono)}
+.lp-strip .v.acc{color:var(--acc)}
+.lp-strip .d{color:var(--fg-3);font-size:12px;margin-top:6px}
+
+.lp-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0 60px}
+.feat{padding:22px;border:1px solid var(--border);border-radius:var(--rl);background:var(--panel)}
+.feat .icon-box{width:34px;height:34px;border-radius:8px;background:var(--acc-bg);border:1px solid var(--acc-border);display:grid;place-items:center;color:var(--acc);margin-bottom:14px}
+.feat h4{font-size:15px;font-weight:600;margin:0 0 8px}
+.feat p{color:var(--fg-3);font-size:13px;margin:0;line-height:1.6}
+
+.lp-section{margin:72px 0}
+.lp-section-title{font-size:11px;color:var(--acc);text-transform:uppercase;letter-spacing:.12em;font-family:var(--mono);margin-bottom:12px}
+.lp-section h2{font-size:32px;font-weight:600;letter-spacing:-.02em;margin:0 0 16px;max-width:640px}
+.lp-section .lead{color:var(--fg-3);font-size:15px;max-width:640px;margin-bottom:28px}
+
+.lp-split{display:grid;grid-template-columns:1.05fr 1fr;gap:36px;align-items:center}
+.lp-split .rev{order:2}
+
+.cmp-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.cmp-table th,.cmp-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border)}
+.cmp-table th{background:var(--elev);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-3);font-weight:500}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table td.yes{color:var(--acc)}
+.cmp-table td.no{color:var(--fg-5)}
+.cmp-table .row-label{font-family:var(--mono);font-size:12px}
+
+.lp-logos{display:flex;gap:40px;flex-wrap:wrap;align-items:center;padding:22px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--fg-5);font-family:var(--mono);font-size:13px;justify-content:space-between;margin-top:60px}
+.lp-logos .lab{font-weight:600;letter-spacing:.02em}
+
+.lp-foot{margin-top:80px;padding-top:28px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:var(--fg-4);font-size:12px;font-family:var(--mono);flex-wrap:wrap;gap:20px}
+.lp-foot .cols{display:flex;gap:28px}
+.lp-foot a{color:var(--fg-3);text-decoration:none}
+.lp-foot a:hover{color:var(--fg)}
+
+/* ===== Hero sections reusable ===== */
+.hero-grid{display:grid;grid-template-columns:.95fr 1.15fr;gap:32px;align-items:center;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.meta-row{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+.meta-row:last-child{border-bottom:none}
+.meta-k{color:var(--fg-4);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+.meta-v{color:var(--fg);min-width:0}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+.note{padding:14px 16px;border:1px solid var(--border);border-left:2px solid var(--acc);border-radius:var(--r);background:var(--panel);font-size:13px;color:var(--fg-2)}
+.note .note-head{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--acc);font-family:var(--mono);margin-bottom:6px}
+.note.red{border-left-color:var(--red)}
+.note.red .note-head{color:var(--red)}
+
+.ann-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;margin-top:20px}
+.annotation h4{font-size:12px;font-weight:600;margin:0 0 4px;color:var(--acc);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.annotation p{font-size:13px;color:var(--fg-2);margin:0 0 16px;line-height:1.55}
+.annotation p.muted{color:var(--fg-4)}
+
+/* ===== CLI reference ===== */
+.cli-layout{display:grid;grid-template-columns:240px 1fr;gap:24px}
+.cli-side{position:sticky;top:76px;align-self:start;padding:18px;background:var(--panel);border:1px solid var(--border);border-radius:var(--rl)}
+.cli-side h5{font-size:11px;text-transform:uppercase;color:var(--fg-4);font-family:var(--mono);letter-spacing:.08em;margin:0 0 8px}
+.cli-side a{display:block;padding:5px 8px;font-family:var(--mono);font-size:12px;color:var(--fg-3);text-decoration:none;border-radius:4px}
+.cli-side a:hover{background:var(--elev);color:var(--fg)}
+.cli-side a.act{color:var(--acc);background:var(--acc-bg)}
+.cli-side + * h3:first-child{margin-top:0}
+
+.cmd-block{margin:16px 0 28px}
+.cmd-block .cmdline{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--elev);border:1px solid var(--border);border-radius:var(--r);font-family:var(--mono);font-size:12.5px;white-space:nowrap;overflow-x:auto}
+.cmd-block .cmdline .p{color:var(--acc)}
+.cmd-block .dsc{color:var(--fg-3);font-size:13px;margin:10px 2px 0}
+.flag-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+.flag-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.flag-table .fk{font-family:var(--mono);color:var(--acc);width:200px;white-space:nowrap}
+.flag-table .ft{font-family:var(--mono);color:var(--violet);font-size:11px;width:90px}
+.flag-table .fd{color:var(--fg-3)}
+
+/* ===== Scan / checks ===== */
+.check-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px}
+.check{padding:16px;border:1px solid var(--border);border-radius:var(--rl);background:var(--panel);position:relative}
+.check .id{font-family:var(--mono);font-size:11px;color:var(--fg-4);letter-spacing:.04em}
+.check h4{font-size:14px;font-weight:600;margin:4px 0 8px}
+.check p{font-size:12.5px;color:var(--fg-3);margin:0 0 10px;line-height:1.55}
+.check .ex{font-family:var(--mono);font-size:11.5px;color:var(--fg-3);background:var(--elev);padding:8px 10px;border-radius:var(--r);border:1px solid var(--border);margin-top:8px}
+.sev{position:absolute;top:14px;right:14px}
+
+/* ===== Install stepper ===== */
+.inst-layout{display:grid;grid-template-columns:260px 1fr;gap:24px;min-height:580px}
+.inst-steps{background:var(--panel);border:1px solid var(--border);border-radius:var(--rl);padding:18px;height:fit-content;position:sticky;top:76px}
+.inst-stepitem{display:grid;grid-template-columns:24px 1fr;gap:12px;padding:10px 0;cursor:pointer}
+.inst-stepitem + .inst-stepitem{border-top:1px solid var(--border)}
+.inst-stepitem .num{width:22px;height:22px;border-radius:50%;background:var(--elev);border:1px solid var(--border-strong);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--fg-3)}
+.inst-stepitem.done .num{background:var(--acc);color:#1a1405;border-color:transparent}
+.inst-stepitem.active .num{background:var(--acc-bg);color:var(--acc);border-color:var(--acc-border)}
+.inst-stepitem .lbl{font-size:13px;color:var(--fg-3)}
+.inst-stepitem .sub{font-size:11px;color:var(--fg-5);font-family:var(--mono);margin-top:2px}
+.inst-stepitem.active .lbl{color:var(--fg)}
+.inst-stepitem.done .lbl{color:var(--fg-2)}
+.inst-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--rl);padding:32px 36px;min-height:560px;display:flex;flex-direction:column}
+.inst-progress{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--acc);font-family:var(--mono);margin-bottom:10px}
+.inst-panel h2{font-size:24px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px}
+.inst-panel .p-sub{color:var(--fg-3);margin:0 0 24px}
+
+.os-tabs{display:flex;gap:4px;margin-bottom:10px}
+.os-tab{padding:7px 12px;font-family:var(--mono);font-size:12px;color:var(--fg-3);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;background:var(--elev)}
+.os-tab.act{background:var(--acc-bg);border-color:var(--acc-border);color:var(--acc)}
+
+.code-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;font-family:var(--mono);font-size:12.5px;color:var(--fg-2);line-height:1.75;position:relative;white-space:pre;overflow-x:auto}
+.code-block .cp{position:absolute;top:10px;right:10px;font-size:10px;color:var(--fg-4);font-family:var(--mono);padding:3px 8px;background:var(--elev);border:1px solid var(--border-strong);border-radius:4px;cursor:pointer}
+.code-block .cp:hover{color:var(--fg)}
+
+.inst-actions{margin-top:auto;padding-top:24px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border)}
+.inst-nav-meta{font-size:11px;color:var(--fg-4);font-family:var(--mono)}
+
+/* diff-style added/removed for YAML/HCL */
+.diff-add{background:rgba(127,224,166,.06);color:var(--green);display:block;padding:0 20px;margin:0 -20px}
+.diff-rm{background:rgba(255,107,107,.08);color:var(--red);display:block;padding:0 20px;margin:0 -20px}
+
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:10px;border:2px solid var(--bg)}
+
+/* shield watermark */
+.shield-wm{position:absolute;right:-20px;top:20px;width:280px;height:280px;opacity:.05;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="docnav">
+  <div class="docnav-inner">
+    <div class="brand">
+      <div class="mark">C</div>
+      <span>custos</span>
+      <span class="brand-badge">v0.3 · alpha</span>
+    </div>
+    <div class="doc-tabs">
+      <div class="doc-tab active" data-tab="landing"><span class="idx">01</span> Home</div>
+      <div class="doc-tab" data-tab="spec"><span class="idx">02</span> Spec format</div>
+      <div class="doc-tab" data-tab="cli"><span class="idx">03</span> CLI</div>
+      <div class="doc-tab" data-tab="scan"><span class="idx">04</span> Security scan</div>
+      <div class="doc-tab" data-tab="ci"><span class="idx">05</span> CI integration</div>
+      <div class="doc-tab" data-tab="install"><span class="idx">06</span> Install</div>
+    </div>
+    <div class="docnav-spacer"></div>
+    <div class="top-cta">
+      <a class="gh-link" href="https://github.com/timkrebs/custos" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.15-1.1-1.46-1.1-1.46-.9-.62.07-.6.07-.6 1 .07 1.52 1.03 1.52 1.03.89 1.52 2.34 1.08 2.9.83.1-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.56 9.56 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>
+        GitHub <span class="star">★ 342</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- =============== 01 LANDING =============== -->
+<section class="screens active" data-screen="landing">
+
+  <div class="lp-hero">
+    <svg class="shield-wm" viewBox="0 0 100 100" fill="none" stroke="#ffd24a" stroke-width="2">
+      <path d="M50 8 18 20v30c0 20 14 32 32 38 18-6 32-18 32-38V20L50 8z"/>
+      <path d="M38 52l8 8 18-20" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="kicker">guardian · lat. custos</span>
+    <h1>The missing <em>terraform&nbsp;plan</em><br/>for HashiCorp Vault policies.</h1>
+    <p class="tag">Write test specifications for your Vault ACL policies, run them offline or against a live Vault instance, and catch misconfigurations, overprivileged access, and policy conflicts — all before they reach production.</p>
+    <div class="lp-cta">
+      <button class="btn btn-primary"><svg class="icon"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Install custos</button>
+      <button class="btn">Read the docs</button>
+      <a class="btn btn-ghost" href="https://github.com/timkrebs/custos" target="_blank" rel="noopener">
+        <svg class="icon"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 7.77 5.07 5.07 0 0 0 19.91 4S18.73 3.65 16 5.48a13.38 13.38 0 0 0-7 0C6.27 3.65 5.09 4 5.09 4A5.07 5.07 0 0 0 5 7.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 21.13V25"/></svg>
+        Star on GitHub
+      </a>
+    </div>
+    <div class="inst-strip">
+      <span class="prompt">$</span>
+      <span>brew install timkrebs/tap/custos</span>
+      <span class="cp" onclick="copyText(this, 'brew install timkrebs/tap/custos')">copy</span>
+    </div>
+
+    <div class="lp-term">
+      <div class="lp-term-head">
+        <span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span>
+        <span class="ttl">~/infra/vault-policies · zsh</span>
+      </div>
+<div class="lp-term-body"><span class="ps">$</span> <span class="cmd">custos test -f tests/read-secret.yaml</span>
+<span class="out">  Loaded 4 specs from tests/read-secret.yaml</span>
+<span class="out">  Mode: <span class="info">offline</span> · 0 live calls · seed 0x8f2a</span>
+<span class="out"></span>
+<span class="out"><span class="ok">  ✓</span> developer can read staging/*        <span class="dim">3 capabilities · 2ms</span></span>
+<span class="out"><span class="ok">  ✓</span> developer cannot write staging/*    <span class="dim">1 capability  · 1ms</span></span>
+<span class="out"><span class="fail">  ✗</span> developer cannot read prod/*        <span class="dim">expected: deny · got: read</span></span>
+<span class="out">      policy.hcl:14  path "secret/data/prod/*"</span>
+<span class="out">                    capabilities = ["read"]   <span class="warn">// widened in PR #412</span></span>
+<span class="out"><span class="fail">  ✗</span> ci-bot has bounded token ttl        <span class="dim">expected ≤ 1h · got 768h</span></span>
+<span class="out"></span>
+<span class="out">  <span class="fail">FAIL</span>  2 specs / 4 · offline / 0 drift</span>
+<span class="out">  <span class="dim">analyzer: 3 warnings (broad_wildcard, missing_sudo_gate)</span></span>
+<span class="out">  <span class="dim">report:   .custos/runs/2026-04-23T14-32.json</span></span>
+</div>
+    </div>
+  </div>
+
+  <div class="lp-strip">
+    <div class="cell"><div class="k">test specs / project</div><div class="v acc">~120</div><div class="d">avg across design partners</div></div>
+    <div class="cell"><div class="k">time to first fail</div><div class="v">&lt; 800ms</div><div class="d">offline, single policy</div></div>
+    <div class="cell"><div class="k">static checks</div><div class="v">24</div><div class="d">wildcard, ttl, capability, sudo</div></div>
+    <div class="cell"><div class="k">dependencies</div><div class="v">0</div><div class="d">single static Go binary</div></div>
+  </div>
+
+  <div class="lp-section">
+    <div class="lp-section-title">how it works</div>
+    <h2>Write specs. Run them. Ship policies you trust.</h2>
+    <p class="lead">custos runs offline against your policy HCL by default — no Vault instance required. Opt into live mode when you want to verify behavior against a real cluster.</p>
+
+    <div class="lp-grid3">
+      <div class="feat">
+        <div class="icon-box"><svg class="icon"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></div>
+        <h4>1. Specify</h4>
+        <p>Describe who should be able to do what, in YAML. One file per policy or logical unit. Refactor-safe — specs reference policies by path.</p>
+      </div>
+      <div class="feat">
+        <div class="icon-box"><svg class="icon"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <h4>2. Run — offline</h4>
+        <p>custos parses your HCL and simulates <span class="mono-i">vault token capabilities</span>. No cluster, no secrets, no network. Runs in CI with a 200ms cold start.</p>
+      </div>
+      <div class="feat">
+        <div class="icon-box"><svg class="icon"><path d="M12 2 4 5v7c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h4>3. Verify — live</h4>
+        <p>Point custos at a live Vault instance to confirm the rendered HCL matches what's actually enforced. Detects drift, ghost policies, and role bindings.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="lp-section">
+    <div class="lp-section-title">why custos</div>
+    <div class="lp-split">
+      <div>
+        <h2 style="font-size:26px">A widened wildcard is a one-line diff. custos makes it loud.</h2>
+        <p class="lead">Vault policy changes look innocent in review. <span class="mono-i">"*"</span> vs <span class="mono-i">"staging/*"</span> is a six-character diff with production-sized consequences. custos turns every policy change into a testable artifact and every review into a verdict.</p>
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <button class="btn btn-primary">See live demo</button>
+          <button class="btn">Example repo</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="card-header"><div class="title"><span class="dot" style="background:var(--red)"></span>policies/developer.hcl — diff</div><span class="badge badge-red">capability widened</span></div>
+<pre style="font-size:11.5px"><span class="tk-c">  path "secret/data/staging/*" {</span>
+<span class="diff-rm">-   capabilities = ["read", "list"]</span><span class="diff-add">+   capabilities = ["create", "read", "update", "delete", "list"]</span><span class="tk-c">  }</span>
+
+<span class="tk-c">  path "secret/data/prod/*" {</span>
+<span class="diff-rm">-   capabilities = ["deny"]</span><span class="diff-add">+   capabilities = ["read"]</span><span class="tk-c">  }</span></pre>
+        <div style="padding:12px 20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--fg-3)">
+          <span style="color:var(--red)">2 spec failures</span> · <span style="color:var(--acc)">3 analyzer warnings</span> · blocks merge
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lp-section">
+    <div class="lp-section-title">positioning</div>
+    <h2 style="font-size:28px">How custos fits with what you already run.</h2>
+    <table class="cmp-table" style="margin-top:16px">
+      <thead>
+        <tr><th>capability</th><th>custos</th><th>vault policy fmt</th><th>sentinel</th><th>opa / conftest</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="row-label">tests capability logic</td><td class="yes">✓ specs</td><td class="no">—</td><td class="no">—</td><td class="no">generic</td></tr>
+        <tr><td class="row-label">runs offline</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td class="row-label">live drift detection</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+        <tr><td class="row-label">static wildcard / ttl analyzer</td><td class="yes">✓ 24 rules</td><td class="no">—</td><td class="yes">paid</td><td class="yes">custom</td></tr>
+        <tr><td class="row-label">designed for Vault HCL</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td></tr>
+        <tr><td class="row-label">requires Vault Enterprise</td><td class="no">✗ never</td><td class="no">✗</td><td class="yes">yes</td><td class="no">✗</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="lp-logos">
+    <div class="lab">HARBOR LABS</div>
+    <div class="lab">westwind.ai</div>
+    <div class="lab">PIER/SEVEN</div>
+    <div class="lab">kinetic</div>
+    <div class="lab">outpost</div>
+    <div class="lab">meridian</div>
+  </div>
+
+  <div class="lp-foot">
+    <div>custos · MIT licensed · © 2026 <a href="https://github.com/timkrebs/custos" target="_blank" rel="noopener">timkrebs/custos</a></div>
+    <div class="cols">
+      <a href="#">Docs</a>
+      <a href="#">CLI reference</a>
+      <a href="https://github.com/timkrebs/custos" target="_blank" rel="noopener">GitHub</a>
+      <a href="#">Issues</a>
+      <a href="#">Security</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- =============== 02 SPEC FORMAT =============== -->
+<section class="screens" data-screen="spec">
+  <div class="hero-grid">
+    <div>
+      <span class="kicker">02 · Spec format</span>
+      <h1 class="h1">The .custos.yaml test spec</h1>
+      <p class="sub">Describes the authorization outcomes you expect from a Vault ACL policy. One spec file per policy (or per logical role). custos parses the HCL referenced in <span class="mono-i">policy</span>, walks every case, and reports pass / fail.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge badge-acc">version: 1</span>
+        <span class="badge">YAML 1.2</span>
+        <span class="badge">offline by default</span>
+      </div>
+    </div>
+    <div>
+      <div class="meta-row"><span class="meta-k">Extension</span><span class="meta-v mono">*.custos.yaml · *.custos.yml</span></div>
+      <div class="meta-row"><span class="meta-k">Default location</span><span class="meta-v mono">tests/ or policies/*/tests/</span></div>
+      <div class="meta-row"><span class="meta-k">Validated by</span><span class="meta-v mono">custos validate</span></div>
+      <div class="meta-row"><span class="meta-k">Schema</span><span class="meta-v mono">custos.dev/spec.v1.json</span></div>
+    </div>
+  </div>
+
+  <h2 class="h2">Annotated example</h2>
+  <p class="muted" style="margin-top:-6px;margin-bottom:16px">A real spec for a <span class="mono-i">developer</span> policy that can read staging, list nothing in prod, and never use sudo.</p>
+
+  <div class="ann-grid">
+    <div class="card">
+      <div class="card-header"><div class="title"><span class="dot"></span>tests/developer.custos.yaml</div><span class="badge">58 lines</span></div>
+<pre><span class="tk-k">version</span><span class="tk-op">:</span> <span class="tk-n">1</span>
+<span class="tk-k">policy</span><span class="tk-op">:</span> <span class="tk-s">policies/developer.hcl</span>
+<span class="tk-k">identity</span><span class="tk-op">:</span>
+  <span class="tk-k">display</span><span class="tk-op">:</span> <span class="tk-s">developer</span>
+  <span class="tk-k">entity_aliases</span><span class="tk-op">:</span>
+    <span class="tk-op">-</span> <span class="tk-s">oidc/google/dev@harbor.dev</span>
+  <span class="tk-k">group</span><span class="tk-op">:</span> <span class="tk-s">engineers</span>
+
+<span class="tk-k">assert</span><span class="tk-op">:</span>
+  <span class="tk-op">-</span> <span class="tk-k">name</span><span class="tk-op">:</span> <span class="tk-s">can read staging secrets</span>
+    <span class="tk-k">path</span><span class="tk-op">:</span> <span class="tk-s">secret/data/staging/api</span>
+    <span class="tk-k">capabilities</span><span class="tk-op">:</span> <span class="tk-p">[read, list]</span>
+    <span class="tk-k">expect</span><span class="tk-op">:</span> <span class="tk-b">allow</span>
+
+  <span class="tk-op">-</span> <span class="tk-k">name</span><span class="tk-op">:</span> <span class="tk-s">cannot write staging secrets</span>
+    <span class="tk-k">path</span><span class="tk-op">:</span> <span class="tk-s">secret/data/staging/api</span>
+    <span class="tk-k">capabilities</span><span class="tk-op">:</span> <span class="tk-p">[create, update, delete]</span>
+    <span class="tk-k">expect</span><span class="tk-op">:</span> <span class="tk-b">deny</span>
+
+  <span class="tk-op">-</span> <span class="tk-k">name</span><span class="tk-op">:</span> <span class="tk-s">cannot touch prod</span>
+    <span class="tk-k">paths</span><span class="tk-op">:</span>
+      <span class="tk-op">-</span> <span class="tk-s">secret/data/prod/*</span>
+      <span class="tk-op">-</span> <span class="tk-s">secret/metadata/prod/*</span>
+    <span class="tk-k">capabilities</span><span class="tk-op">:</span> <span class="tk-p">[read, list, create, update, delete]</span>
+    <span class="tk-k">expect</span><span class="tk-op">:</span> <span class="tk-b">deny</span>
+
+  <span class="tk-op">-</span> <span class="tk-k">name</span><span class="tk-op">:</span> <span class="tk-s">no sudo on auth backend</span>
+    <span class="tk-k">path</span><span class="tk-op">:</span> <span class="tk-s">auth/token/create-orphan</span>
+    <span class="tk-k">capabilities</span><span class="tk-op">:</span> <span class="tk-p">[sudo]</span>
+    <span class="tk-k">expect</span><span class="tk-op">:</span> <span class="tk-b">deny</span>
+
+  <span class="tk-op">-</span> <span class="tk-k">name</span><span class="tk-op">:</span> <span class="tk-s">token ttl is bounded</span>
+    <span class="tk-k">kind</span><span class="tk-op">:</span> <span class="tk-s">token</span>
+    <span class="tk-k">constraint</span><span class="tk-op">:</span>
+      <span class="tk-k">ttl_max</span><span class="tk-op">:</span> <span class="tk-s">"1h"</span>
+      <span class="tk-k">renewable</span><span class="tk-op">:</span> <span class="tk-b">true</span>
+    <span class="tk-k">expect</span><span class="tk-op">:</span> <span class="tk-b">allow</span>
+
+<span class="tk-k">live</span><span class="tk-op">:</span>
+  <span class="tk-k">enabled</span><span class="tk-op">:</span> <span class="tk-b">false</span>        <span class="tk-c"># set true in CI against staging</span>
+  <span class="tk-k">cluster</span><span class="tk-op">:</span> <span class="tk-s">staging</span>
+  <span class="tk-k">login</span><span class="tk-op">:</span>
+    <span class="tk-k">method</span><span class="tk-op">:</span> <span class="tk-s">oidc</span>
+    <span class="tk-k">role</span><span class="tk-op">:</span> <span class="tk-s">developer</span>
+
+<span class="tk-k">analyzer</span><span class="tk-op">:</span>
+  <span class="tk-k">severity_floor</span><span class="tk-op">:</span> <span class="tk-s">warn</span>
+  <span class="tk-k">ignore</span><span class="tk-op">:</span> <span class="tk-p">[glob_permissive_root]</span></pre>
+    </div>
+
+    <div>
+      <div class="annotation">
+        <h4>policy</h4>
+        <p>Relative path to the .hcl file under test. custos reads this file, not a Vault API call — so specs survive cluster outages and run in any clone.</p>
+      </div>
+      <div class="annotation">
+        <h4>identity</h4>
+        <p>What token the spec simulates. In offline mode this is metadata for the report; in live mode, custos logs in with these credentials to evaluate <span class="mono-i">token capabilities</span>.</p>
+      </div>
+      <div class="annotation">
+        <h4>assert[]</h4>
+        <p>Each case has <em>path(s)</em>, <em>capabilities</em>, and <em>expect: allow | deny</em>. That's the whole assertion grammar — intentionally tiny so specs read like a truth table.</p>
+        <p class="muted"><span class="mono-i">kind: token</span> switches to token-shape assertions (ttl, orphan, policies attached). Use for role-config tests.</p>
+      </div>
+      <div class="annotation">
+        <h4>live</h4>
+        <p>Off by default. Flipping it on makes custos run the same specs against a real cluster to detect drift between the rendered HCL and what Vault actually enforces.</p>
+      </div>
+      <div class="annotation">
+        <h4>analyzer</h4>
+        <p>Per-spec tuning for the static analyzer. Rules can be silenced with justification — the comment becomes part of the audit trail.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="h2">HCL, for reference</h2>
+  <p class="muted" style="margin-top:-6px;margin-bottom:16px">The policy the spec above tests against. Nothing custos-specific in here — standard Vault ACL.</p>
+  <div class="card">
+    <div class="card-header"><div class="title"><span class="dot"></span>policies/developer.hcl</div><span class="badge">vault ACL</span></div>
+<pre><span class="tk-c"># Read + list staging secrets</span>
+<span class="tk-ctl">path</span> <span class="tk-s">"secret/data/staging/*"</span> <span class="tk-op">{</span>
+  <span class="tk-k">capabilities</span> <span class="tk-op">=</span> <span class="tk-p">[</span><span class="tk-s">"read"</span>, <span class="tk-s">"list"</span><span class="tk-p">]</span>
+<span class="tk-op">}</span>
+
+<span class="tk-c"># Everything under prod is off-limits</span>
+<span class="tk-ctl">path</span> <span class="tk-s">"secret/data/prod/*"</span> <span class="tk-op">{</span>
+  <span class="tk-k">capabilities</span> <span class="tk-op">=</span> <span class="tk-p">[</span><span class="tk-s">"deny"</span><span class="tk-p">]</span>
+<span class="tk-op">}</span>
+
+<span class="tk-ctl">path</span> <span class="tk-s">"secret/metadata/prod/*"</span> <span class="tk-op">{</span>
+  <span class="tk-k">capabilities</span> <span class="tk-op">=</span> <span class="tk-p">[</span><span class="tk-s">"deny"</span><span class="tk-p">]</span>
+<span class="tk-op">}</span>
+
+<span class="tk-c"># Let devs self-lookup their own token</span>
+<span class="tk-ctl">path</span> <span class="tk-s">"auth/token/lookup-self"</span> <span class="tk-op">{</span>
+  <span class="tk-k">capabilities</span> <span class="tk-op">=</span> <span class="tk-p">[</span><span class="tk-s">"read"</span><span class="tk-p">]</span>
+<span class="tk-op">}</span></pre>
+  </div>
+
+  <h2 class="h2">Design choices</h2>
+  <div class="two-col">
+    <div class="note">
+      <div class="note-head">why yaml, not hcl</div>
+      Tests should read like English. HCL is great for policies but noisy for assertion tables. YAML lets the spec scan as a contract — one case per line, <em>expect</em> at the end of each.
+    </div>
+    <div class="note">
+      <div class="note-head">why offline first</div>
+      Most policy bugs are logic bugs, not cluster bugs. Offline mode means every engineer can run the full test suite with zero infra — and CI gets to fail a PR in under a second.
+    </div>
+    <div class="note">
+      <div class="note-head">deny beats absence</div>
+      custos evaluates like Vault does: most-specific path wins, explicit <span class="mono-i">deny</span> overrides anything else. Unwritten paths default to deny. Specs don't need to enumerate the universe.
+    </div>
+    <div class="note red">
+      <div class="note-head">what specs can't do</div>
+      They don't test templated policies that interpolate identity metadata at request time, and they can't prove emergent behavior across policy stacks. For that, run <span class="mono-i">custos scan --policies</span> across the whole bundle.
+    </div>
+  </div>
+</section>
+
+
+<!-- =============== 03 CLI =============== -->
+<section class="screens" data-screen="cli">
+  <div class="hero-grid">
+    <div>
+      <span class="kicker">03 · CLI reference</span>
+      <h1 class="h1">custos — command-line</h1>
+      <p class="sub">A single static Go binary. No runtime, no daemon, no sidecar. Outputs pretty-printed text by default, JSON for CI, JUnit XML for the test-reporter your org already uses.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge badge-acc">v0.3.0</span>
+        <span class="badge">darwin / linux / windows</span>
+        <span class="badge">arm64 / amd64</span>
+        <span class="badge">go 1.22+</span>
+      </div>
+    </div>
+    <div>
+      <div class="meta-row"><span class="meta-k">Binary size</span><span class="meta-v mono">~12 MB</span></div>
+      <div class="meta-row"><span class="meta-k">Cold start</span><span class="meta-v mono">~180 ms</span></div>
+      <div class="meta-row"><span class="meta-k">Exit codes</span><span class="meta-v mono">0 pass · 1 fail · 2 error · 3 config</span></div>
+      <div class="meta-row"><span class="meta-k">Shell completion</span><span class="meta-v mono">zsh · bash · fish</span></div>
+    </div>
+  </div>
+
+  <div class="cli-layout">
+    <nav class="cli-side">
+      <h5>Commands</h5>
+      <a href="#c-test" class="act">custos test</a>
+      <a href="#c-scan">custos scan</a>
+      <a href="#c-validate">custos validate</a>
+      <a href="#c-drift">custos drift</a>
+      <a href="#c-init">custos init</a>
+      <a href="#c-completion">custos completion</a>
+      <h5 style="margin-top:18px">Output</h5>
+      <a href="#o-formats">--format</a>
+      <a href="#o-exit">exit codes</a>
+    </nav>
+
+    <div>
+      <h3 id="c-test" class="h3">custos test</h3>
+      <div class="cmd-block">
+        <div class="cmdline"><span class="p">$</span> custos test [flags] <span style="color:var(--fg-4)">[spec-files...]</span></div>
+        <p class="dsc">Runs the assertion grammar of one or more <span class="mono-i">*.custos.yaml</span> files against the referenced HCL. Recursively discovers specs under the working directory if none are passed.</p>
+        <table class="flag-table">
+          <tr><td class="fk">-f, --file</td><td class="ft">path…</td><td class="fd">Spec file(s). Glob supported. Defaults to <span class="mono-i">**/*.custos.yaml</span>.</td></tr>
+          <tr><td class="fk">--policies</td><td class="ft">dir</td><td class="fd">Root directory to resolve <span class="mono-i">policy:</span> paths against. Defaults to repo root.</td></tr>
+          <tr><td class="fk">--live</td><td class="ft">bool</td><td class="fd">Flip specs marked <span class="mono-i">live.enabled</span> on. Needs <span class="mono-i">VAULT_ADDR</span>, <span class="mono-i">VAULT_TOKEN</span> (or OIDC).</td></tr>
+          <tr><td class="fk">--format</td><td class="ft">enum</td><td class="fd"><span class="mono-i">text</span> (default) · <span class="mono-i">json</span> · <span class="mono-i">junit</span> · <span class="mono-i">sarif</span></td></tr>
+          <tr><td class="fk">--filter</td><td class="ft">regex</td><td class="fd">Run only specs whose name matches. Like <span class="mono-i">go test -run</span>.</td></tr>
+          <tr><td class="fk">--fail-on</td><td class="ft">enum</td><td class="fd"><span class="mono-i">any</span> (default) · <span class="mono-i">error</span> · <span class="mono-i">warn</span> — raise exit threshold.</td></tr>
+          <tr><td class="fk">-v, --verbose</td><td class="ft">bool</td><td class="fd">Print every matched path + the decision trace.</td></tr>
+          <tr><td class="fk">--seed</td><td class="ft">hex</td><td class="fd">Deterministic ordering for parallel runners. Defaults to commit sha.</td></tr>
+        </table>
+      </div>
+
+      <h3 id="c-scan" class="h3">custos scan</h3>
+      <div class="cmd-block">
+        <div class="cmdline"><span class="p">$</span> custos scan [flags] <span style="color:var(--fg-4)">[policy-dir]</span></div>
+        <p class="dsc">Runs the static analyzer over every HCL file in the directory. No specs required — works the moment you drop the binary in a policy repo.</p>
+        <table class="flag-table">
+          <tr><td class="fk">--rules</td><td class="ft">list</td><td class="fd">Comma-separated rule ids. Defaults to the built-in 24. See <a href="#" onclick="switchTab('scan');return false">the full catalog →</a></td></tr>
+          <tr><td class="fk">--severity</td><td class="ft">enum</td><td class="fd">Floor to print. <span class="mono-i">info · warn · error</span>.</td></tr>
+          <tr><td class="fk">--ignore-file</td><td class="ft">path</td><td class="fd">Load <span class="mono-i">.custosignore</span> of "rule_id: reason" pairs.</td></tr>
+          <tr><td class="fk">--format</td><td class="ft">enum</td><td class="fd">text · json · sarif (uploadable to GitHub code scanning)</td></tr>
+        </table>
+      </div>
+
+      <h3 id="c-validate" class="h3">custos validate</h3>
+      <div class="cmd-block">
+        <div class="cmdline"><span class="p">$</span> custos validate [flags]</div>
+        <p class="dsc">Type-checks specs against the v1 schema. Useful as a pre-commit hook — catches misspellings (<span class="mono-i">capabilites</span>) and invalid path shapes before test runs.</p>
+      </div>
+
+      <h3 id="c-drift" class="h3">custos drift</h3>
+      <div class="cmd-block">
+        <div class="cmdline"><span class="p">$</span> custos drift --cluster &lt;name&gt;</div>
+        <p class="dsc">Diffs the HCL checked into your repo against what's currently written on a live cluster. Outputs a unified diff per policy. Designed to run nightly, alert on discrepancy.</p>
+        <table class="flag-table">
+          <tr><td class="fk">--cluster</td><td class="ft">string</td><td class="fd">Named context from <span class="mono-i">~/.custos/clusters.yaml</span>.</td></tr>
+          <tr><td class="fk">--only</td><td class="ft">glob</td><td class="fd">Only diff policies matching the pattern.</td></tr>
+          <tr><td class="fk">--ignore-absent</td><td class="ft">bool</td><td class="fd">Don't flag policies that exist on cluster but not in repo.</td></tr>
+        </table>
+      </div>
+
+      <h3 id="c-init" class="h3">custos init</h3>
+      <div class="cmd-block">
+        <div class="cmdline"><span class="p">$</span> custos init</div>
+        <p class="dsc">Writes a <span class="mono-i">.custos/</span> skeleton — config, sample spec, GitHub Actions workflow, pre-commit hook. Detects existing policies and stubs one spec per file.</p>
+      </div>
+
+      <h3 id="c-completion" class="h3">custos completion</h3>
+      <div class="cmd-block">
+        <div class="cmdline"><span class="p">$</span> custos completion {bash|zsh|fish}</div>
+        <p class="dsc">Prints shell completion to stdout. Installation one-liner for zsh: <span class="mono-i">custos completion zsh &gt; ~/.zfunc/_custos</span>.</p>
+      </div>
+
+      <h3 id="o-formats" class="h3" style="margin-top:40px">Output formats</h3>
+      <div class="card">
+        <div class="card-header"><div class="title"><span class="dot"></span>--format json · single failed spec (elided)</div><span class="badge">machine-readable</span></div>
+<pre>{
+  <span class="tk-k">"$schema"</span><span class="tk-op">:</span> <span class="tk-s">"custos.dev/run.v1.json"</span>,
+  <span class="tk-k">"runId"</span><span class="tk-op">:</span> <span class="tk-s">"2026-04-23T14-32"</span>,
+  <span class="tk-k">"mode"</span><span class="tk-op">:</span> <span class="tk-s">"offline"</span>,
+  <span class="tk-k">"summary"</span><span class="tk-op">:</span> { <span class="tk-k">"total"</span><span class="tk-op">:</span> <span class="tk-n">4</span>, <span class="tk-k">"passed"</span><span class="tk-op">:</span> <span class="tk-n">2</span>, <span class="tk-k">"failed"</span><span class="tk-op">:</span> <span class="tk-n">2</span>, <span class="tk-k">"warnings"</span><span class="tk-op">:</span> <span class="tk-n">3</span> },
+  <span class="tk-k">"specs"</span><span class="tk-op">:</span> [
+    {
+      <span class="tk-k">"name"</span><span class="tk-op">:</span> <span class="tk-s">"developer cannot read prod/*"</span>,
+      <span class="tk-k">"file"</span><span class="tk-op">:</span> <span class="tk-s">"tests/developer.custos.yaml:26"</span>,
+      <span class="tk-k">"status"</span><span class="tk-op">:</span> <span class="tk-s">"fail"</span>,
+      <span class="tk-k">"path"</span><span class="tk-op">:</span> <span class="tk-s">"secret/data/prod/api"</span>,
+      <span class="tk-k">"expected"</span><span class="tk-op">:</span> <span class="tk-s">"deny"</span>,
+      <span class="tk-k">"actual"</span><span class="tk-op">:</span>   <span class="tk-s">"read"</span>,
+      <span class="tk-k">"ruleOrigin"</span><span class="tk-op">:</span> { <span class="tk-k">"file"</span><span class="tk-op">:</span> <span class="tk-s">"policies/developer.hcl"</span>, <span class="tk-k">"line"</span><span class="tk-op">:</span> <span class="tk-n">14</span> }
+    }
+  ]
+}</pre>
+      </div>
+
+      <h3 id="o-exit" class="h3">Exit codes</h3>
+      <table class="flag-table" style="max-width:560px">
+        <tr><td class="fk">0</td><td class="ft">pass</td><td class="fd">All specs pass, no analyzer errors (warnings allowed unless <span class="mono-i">--fail-on warn</span>).</td></tr>
+        <tr><td class="fk">1</td><td class="ft">fail</td><td class="fd">One or more spec failures or analyzer issues at the configured floor.</td></tr>
+        <tr><td class="fk">2</td><td class="ft">error</td><td class="fd">Runtime problem — can't read file, HCL parse error, Vault unreachable.</td></tr>
+        <tr><td class="fk">3</td><td class="ft">config</td><td class="fd">Spec schema invalid or unknown flag. Doesn't consume a CI minute.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+
+<!-- =============== 04 SCAN / CHECKS =============== -->
+<section class="screens" data-screen="scan">
+  <div class="hero-grid">
+    <div>
+      <span class="kicker">04 · Security scan</span>
+      <h1 class="h1">Built-in analyzer rules</h1>
+      <p class="sub">Even with zero specs, <span class="mono-i">custos scan</span> flags the most common classes of Vault-policy bug: too-broad wildcards, unbounded token TTLs, missing sudo gates, orphaned deny clauses. Curated by the maintainer, open to PRs.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge badge-acc">24 rules · v0.3</span>
+        <span class="badge">SARIF output</span>
+        <span class="badge">GitHub Code Scanning ready</span>
+      </div>
+    </div>
+    <div>
+      <div class="meta-row"><span class="meta-k">Families</span><span class="meta-v">glob · capability · ttl · identity · mount</span></div>
+      <div class="meta-row"><span class="meta-k">Severity</span><span class="meta-v mono">info · warn · error</span></div>
+      <div class="meta-row"><span class="meta-k">Runtime</span><span class="meta-v mono">~400ms for 200 policies</span></div>
+      <div class="meta-row"><span class="meta-k">Ignore file</span><span class="meta-v mono">.custosignore</span></div>
+    </div>
+  </div>
+
+  <h2 class="h2">Catalog</h2>
+  <div class="check-grid">
+
+    <div class="check">
+      <div class="sev"><span class="badge badge-red">error</span></div>
+      <div class="id">C001 · glob_permissive_root</div>
+      <h4>Wildcard at root path</h4>
+      <p>Any policy that matches <span class="mono-i">"*"</span> or <span class="mono-i">"secret/*"</span> with more than <em>read, list</em>. Almost always a mistake in copy-pasted starter policies.</p>
+      <div class="ex"><span style="color:var(--red)">✗</span> path "*" { capabilities = ["create", "update"] }</div>
+    </div>
+
+    <div class="check">
+      <div class="sev"><span class="badge badge-red">error</span></div>
+      <div class="id">C002 · capability_write_on_metadata</div>
+      <h4>Write on KV metadata</h4>
+      <p>Metadata writes allow version tombstoning and permanent secret destruction. Should be reserved for a narrow <span class="mono-i">kv-admin</span> policy.</p>
+      <div class="ex"><span style="color:var(--red)">✗</span> path "secret/metadata/*" { capabilities = ["update", "delete"] }</div>
+    </div>
+
+    <div class="check">
+      <div class="sev"><span class="badge badge-acc">warn</span></div>
+      <div class="id">C003 · broad_wildcard</div>
+      <h4>Glob broader than needed</h4>
+      <p>Heuristic: if a policy covers <span class="mono-i">x/y/*</span> but the spec only asserts <span class="mono-i">x/y/api</span> and <span class="mono-i">x/y/web</span>, propose narrowing.</p>
+      <div class="ex"><span style="color:var(--acc)">!</span> path "secret/data/staging/*" → try "secret/data/staging/{api,web}"</div>
+    </div>
+
+    <div class="check">
+      <div class="sev"><span class="badge badge-acc">warn</span></div>
+      <div class="id">C004 · missing_sudo_gate</div>
+      <h4>Sudo-required path without sudo</h4>
+      <p>Certain paths (e.g. <span class="mono-i">sys/auth</span>, <span class="mono-i">sys/policies</span>) need the <em>sudo</em> capability. Policy grants <em>create</em> but omits <em>sudo</em> → request will 403 at runtime.</p>
+      <div class="ex"><span style="color:var(--acc)">!</span> path "sys/auth/oidc" { capabilities = ["update"] } <span style="color:var(--fg-4)"># missing "sudo"</span></div>
+    </div>
+
+    <div class="check">
+      <div class="sev"><span class="badge badge-red">error</span></div>
+      <div class="id">C005 · ttl_unbounded</div>
+      <h4>Role TTL missing or &gt;24h</h4>
+      <p>Token roles with <span class="mono-i">explicit_max_ttl = 0</span> or above the org policy ceiling. Flagged as error by default; tighten with <span class="mono-i">ttl.max_hours</span>.</p>
+      <div class="ex"><span style="color:var(--red)">✗</span> role "ci-bot" { explicit_max_ttl = "768h" }</div>
+    </div>
+
+    <div class="check">
+      <div class="sev"><span class="badge badge-acc">warn</span></div>
+      <div class="id">C006 · orphan_token_allowed</div>
+      <h4>Can create orphan tokens</h4>
+      <p>Policy grants <span class="mono-i">update</span> on <span class="mono-i">auth/token/create-orphan</span>. Orphans bypass lease revocation — a compromised caller can persist.</p>
+      <div class="ex"><span style="color:var(--acc)">!</span> path "auth/token/create-orphan" { capabilities = ["update"] }</div>
+    </div>
+
+    <div class="check">
+      <div class="sev"><span class="badge badge-red">error</span></div>
+      <div class="id">C007 · deny_overridden</div>
+      <h4>Deny shadowed by broader allow</h4>
+      <p>A later, broader <em>allow</em> path makes an earlier <em>deny</em> unreachable. Runtime behavior: Vault picks most specific, but this is usually a refactor bug.</p>
+      <div class="ex"><span style="color:var(--red)">✗</span> deny on "secret/data/prod" shadowed by allow on "secret/data/*"</div>
+    </div>
+
+    <div class="check">
+      <div class="sev"><span class="badge badge-acc">warn</span></div>
+      <div class="id">C008 · mount_mismatch</div>
+      <h4>Path doesn't exist on any mount</h4>
+      <p>Run with <span class="mono-i">--mounts mounts.json</span> to cross-check paths in policies exist on the cluster. Dead paths are usually refactors that forgot to update the policy.</p>
+      <div class="ex"><span style="color:var(--acc)">!</span> path "kv-v1/old-team/*" — mount "kv-v1/" disabled 2024-08</div>
+    </div>
+
+  </div>
+
+  <div class="two-col" style="margin-top:32px">
+    <div class="note">
+      <div class="note-head">how rules evolve</div>
+      Every rule starts life as a <span class="mono-i">warn</span>. After two releases and real-world feedback, the maintainer promotes to <span class="mono-i">error</span> if the false-positive rate is low enough. Reverse the move is possible — no rule is eternal.
+    </div>
+    <div class="note">
+      <div class="note-head">suppression, with receipts</div>
+      <span class="mono-i">.custosignore</span> takes <span class="mono-i">rule_id: "because ..."</span>. The reason is rendered in every report and audit, so silencing a rule is a tracked decision, not a private one.
+    </div>
+  </div>
+</section>
+
+
+<!-- =============== 05 CI INTEGRATION =============== -->
+<section class="screens" data-screen="ci">
+  <div class="hero-grid">
+    <div>
+      <span class="kicker">05 · CI integration</span>
+      <h1 class="h1">From local edit → merge-blocking check</h1>
+      <p class="sub">Three ways to run custos on every PR: GitHub Actions, GitLab CI, and <span class="mono-i">pre-commit</span>. Pick one — they produce the same run record, the same exit code, the same SARIF output.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge badge-acc">Actions · GitLab · Jenkins · Circle</span>
+        <span class="badge">SARIF · JUnit · JSON</span>
+      </div>
+    </div>
+    <div>
+      <div class="meta-row"><span class="meta-k">Typical run time</span><span class="meta-v mono">20–45s, offline</span></div>
+      <div class="meta-row"><span class="meta-k">Cache</span><span class="meta-v">custos binary cached by version</span></div>
+      <div class="meta-row"><span class="meta-k">Artifacts</span><span class="meta-v">run.json, report.sarif, trace.log</span></div>
+    </div>
+  </div>
+
+  <h2 class="h2">GitHub Actions</h2>
+  <p class="muted" style="margin:-6px 0 12px">Drop in <span class="mono-i">.github/workflows/custos.yml</span>. Surfaces failures as annotations + the run summary in the check tab.</p>
+  <div class="card">
+    <div class="card-header"><div class="title"><span class="dot"></span>.github/workflows/custos.yml</div><span class="badge">GitHub Actions</span></div>
+<pre><span class="tk-k">name</span><span class="tk-op">:</span> <span class="tk-s">custos</span>
+<span class="tk-k">on</span><span class="tk-op">:</span>
+  <span class="tk-k">pull_request</span><span class="tk-op">:</span>
+    <span class="tk-k">paths</span><span class="tk-op">:</span> <span class="tk-p">[</span><span class="tk-s">"policies/**"</span>, <span class="tk-s">"tests/**/*.custos.yaml"</span><span class="tk-p">]</span>
+
+<span class="tk-k">jobs</span><span class="tk-op">:</span>
+  <span class="tk-k">test</span><span class="tk-op">:</span>
+    <span class="tk-k">runs-on</span><span class="tk-op">:</span> <span class="tk-s">ubuntu-latest</span>
+    <span class="tk-k">permissions</span><span class="tk-op">:</span>
+      <span class="tk-k">contents</span><span class="tk-op">:</span> <span class="tk-s">read</span>
+      <span class="tk-k">pull-requests</span><span class="tk-op">:</span> <span class="tk-s">write</span>
+      <span class="tk-k">security-events</span><span class="tk-op">:</span> <span class="tk-s">write</span>  <span class="tk-c"># for SARIF upload</span>
+    <span class="tk-k">steps</span><span class="tk-op">:</span>
+      <span class="tk-op">-</span> <span class="tk-k">uses</span><span class="tk-op">:</span> <span class="tk-s">actions/checkout@v4</span>
+      <span class="tk-op">-</span> <span class="tk-k">uses</span><span class="tk-op">:</span> <span class="tk-s">timkrebs/custos-action@v1</span>
+        <span class="tk-k">with</span><span class="tk-op">:</span>
+          <span class="tk-k">version</span><span class="tk-op">:</span> <span class="tk-s">"0.3.0"</span>
+      <span class="tk-op">-</span> <span class="tk-k">name</span><span class="tk-op">:</span> <span class="tk-s">custos scan</span>
+        <span class="tk-k">run</span><span class="tk-op">:</span> <span class="tk-s">custos scan policies/ --format sarif &gt; custos.sarif</span>
+      <span class="tk-op">-</span> <span class="tk-k">uses</span><span class="tk-op">:</span> <span class="tk-s">github/codeql-action/upload-sarif@v3</span>
+        <span class="tk-k">with</span><span class="tk-op">:</span> { <span class="tk-k">sarif_file</span><span class="tk-op">:</span> <span class="tk-s">custos.sarif</span> }
+      <span class="tk-op">-</span> <span class="tk-k">name</span><span class="tk-op">:</span> <span class="tk-s">custos test</span>
+        <span class="tk-k">run</span><span class="tk-op">:</span> <span class="tk-s">custos test --format junit --fail-on warn &gt; report.xml</span></pre>
+  </div>
+
+  <h2 class="h2">pre-commit hook</h2>
+  <p class="muted" style="margin:-6px 0 12px">Run offline specs before the commit even lands. Sub-second for a typical repo.</p>
+  <div class="card">
+    <div class="card-header"><div class="title"><span class="dot"></span>.pre-commit-config.yaml</div><span class="badge">pre-commit.com</span></div>
+<pre><span class="tk-k">repos</span><span class="tk-op">:</span>
+  <span class="tk-op">-</span> <span class="tk-k">repo</span><span class="tk-op">:</span> <span class="tk-s">https://github.com/timkrebs/custos</span>
+    <span class="tk-k">rev</span><span class="tk-op">:</span> <span class="tk-s">v0.3.0</span>
+    <span class="tk-k">hooks</span><span class="tk-op">:</span>
+      <span class="tk-op">-</span> <span class="tk-k">id</span><span class="tk-op">:</span> <span class="tk-s">custos-validate</span>   <span class="tk-c"># schema check</span>
+      <span class="tk-op">-</span> <span class="tk-k">id</span><span class="tk-op">:</span> <span class="tk-s">custos-test</span>       <span class="tk-c"># offline specs</span>
+        <span class="tk-k">files</span><span class="tk-op">:</span> <span class="tk-s">"^(policies|tests)/"</span></pre>
+  </div>
+
+  <h2 class="h2">PR check — what reviewers see</h2>
+  <div class="card" style="margin-top:8px">
+    <div class="card-header"><div class="title"><span class="dot" style="background:var(--red)"></span>custos · failed in 38s</div><span class="badge badge-red">merge blocked</span></div>
+    <div style="padding:20px">
+      <div style="display:flex;gap:12px;font-family:var(--mono);font-size:12px;color:var(--fg-3);margin-bottom:14px">
+        <span><span style="color:var(--green)">2</span> passed</span>
+        <span><span style="color:var(--red)">2</span> failed</span>
+        <span><span style="color:var(--acc)">3</span> warnings</span>
+        <span style="margin-left:auto;color:var(--fg-4)">commit 8f2a19c · run 2026-04-23T14-32</span>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;padding:10px 14px;border:1px solid var(--red-border);background:var(--red-bg);border-radius:var(--r);font-size:13px">
+          <svg class="icon" style="color:var(--red)"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+          <div><div style="font-weight:500">developer cannot read prod/*</div><div style="font-family:var(--mono);font-size:11px;color:var(--fg-3);margin-top:2px">expected <span style="color:var(--red)">deny</span>, got <span style="color:var(--red)">read</span> · policies/developer.hcl:14</div></div>
+          <span class="badge badge-red">spec</span>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;padding:10px 14px;border:1px solid var(--red-border);background:var(--red-bg);border-radius:var(--r);font-size:13px">
+          <svg class="icon" style="color:var(--red)"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+          <div><div style="font-weight:500">ci-bot has bounded token ttl</div><div style="font-family:var(--mono);font-size:11px;color:var(--fg-3);margin-top:2px">ttl_max ≤ 1h · got 768h · policies/ci-bot.hcl:4</div></div>
+          <span class="badge badge-red">spec</span>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;padding:10px 14px;border:1px solid var(--border);background:var(--elev);border-radius:var(--r);font-size:13px">
+          <svg class="icon" style="color:var(--acc)"><path d="M12 9v4M12 17h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+          <div><div style="font-weight:500">C001 wildcard at root path</div><div style="font-family:var(--mono);font-size:11px;color:var(--fg-3);margin-top:2px">policies/developer.hcl:2 · path "*" with write capabilities</div></div>
+          <span class="badge badge-acc">warn</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-top:28px">
+    <div class="note">
+      <div class="note-head">what we don't do</div>
+      custos never commits back to your branch, never auto-fixes HCL, never runs in privileged mode. It's a read-only checker.
+    </div>
+    <div class="note">
+      <div class="note-head">live-mode tokens</div>
+      For drift and live specs in CI: use short-lived OIDC tokens against Vault (federated workload identity). No long-lived PATs in secrets. Example workflow is in the docs.
+    </div>
+  </div>
+</section>
+
+
+<!-- =============== 06 INSTALL =============== -->
+<section class="screens" data-screen="install">
+  <span class="kicker">06 · Install</span>
+  <h1 class="h1">Up and running in 3 minutes</h1>
+  <p class="sub">Single binary. Write one spec, run it. No account, no cluster, no telemetry. Walk the stepper below or skip straight to the docs.</p>
+
+  <div class="inst-layout">
+    <div class="inst-steps">
+      <div class="inst-stepitem active" data-step="1">
+        <div class="num">1</div>
+        <div><div class="lbl">Install the binary</div><div class="sub">brew / go / curl / scoop</div></div>
+      </div>
+      <div class="inst-stepitem" data-step="2">
+        <div class="num">2</div>
+        <div><div class="lbl">Initialize your repo</div><div class="sub">custos init</div></div>
+      </div>
+      <div class="inst-stepitem" data-step="3">
+        <div class="num">3</div>
+        <div><div class="lbl">Write your first spec</div><div class="sub">one case at a time</div></div>
+      </div>
+      <div class="inst-stepitem" data-step="4">
+        <div class="num">4</div>
+        <div><div class="lbl">Run it locally</div><div class="sub">custos test</div></div>
+      </div>
+      <div class="inst-stepitem" data-step="5">
+        <div class="num">5</div>
+        <div><div class="lbl">Wire up CI</div><div class="sub">GitHub Actions · GitLab · pre-commit</div></div>
+      </div>
+      <div class="inst-stepitem" data-step="6">
+        <div class="num">6</div>
+        <div><div class="lbl">Go live against Vault</div><div class="sub">optional · OIDC login</div></div>
+      </div>
+    </div>
+
+    <div class="inst-panel" id="instPanel"></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.doc-tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.screens').forEach(x => x.classList.remove('active'));
+  document.querySelector(`.doc-tab[data-tab="${name}"]`).classList.add('active');
+  document.querySelector(`[data-screen="${name}"]`).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.querySelectorAll('.doc-tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+function copyText(el, t) {
+  navigator.clipboard?.writeText(t);
+  const prev = el.textContent; el.textContent = 'copied'; setTimeout(() => el.textContent = prev, 900);
+}
+
+/* CLI side-nav active state on click */
+document.querySelectorAll('.cli-side a').forEach(a => a.addEventListener('click', () => {
+  document.querySelectorAll('.cli-side a').forEach(x => x.classList.remove('act'));
+  a.classList.add('act');
+}));
+
+/* ===== Install stepper ===== */
+const INSTALL_STEPS = {
+  1: {
+    prog: 'Step 1 of 6',
+    title: 'Install the custos binary',
+    sub: 'Pick your flavor. All targets ship the same v0.3.0 binary, ~12 MB, statically linked.',
+    body: () => `
+      <div class="os-tabs">
+        <div class="os-tab act" data-os="mac">macOS</div>
+        <div class="os-tab" data-os="linux">Linux</div>
+        <div class="os-tab" data-os="win">Windows</div>
+        <div class="os-tab" data-os="go">go install</div>
+      </div>
+      <div class="code-block" id="os-body">
+<span class="tk-c"># Homebrew (recommended)</span>
+$ brew install timkrebs/tap/custos
+
+<span class="tk-c"># Verify</span>
+$ custos version
+custos v0.3.0 (commit 8f2a19c, built 2026-04-18)
+<span class="cp" onclick="copyText(this,'brew install timkrebs/tap/custos')">copy</span>
+      </div>
+      <div style="margin-top:16px;padding:12px 14px;background:var(--elev);border:1px solid var(--border);border-radius:var(--r);font-size:12px;color:var(--fg-3)">
+        <span style="color:var(--acc);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em">alternate</span>
+        <div style="margin-top:6px">Binaries and checksums: <a class="mono-i" href="https://github.com/timkrebs/custos/releases" target="_blank" rel="noopener" style="text-decoration:none">github.com/timkrebs/custos/releases</a></div>
+      </div>`
+  },
+  2: {
+    prog: 'Step 2 of 6',
+    title: 'Initialize your repo',
+    sub: 'Run at the root of your Vault policies repo. Writes a .custos/ skeleton and stubs one spec per existing .hcl file.',
+    body: () => `
+      <div class="code-block">
+$ custos init
+  <span class="tk-c">→</span> detected 7 .hcl policies in policies/
+  <span class="tk-c">→</span> wrote .custos/config.yaml
+  <span class="tk-c">→</span> wrote tests/developer.custos.yaml       <span class="tk-c">(stub)</span>
+  <span class="tk-c">→</span> wrote tests/ci-bot.custos.yaml          <span class="tk-c">(stub)</span>
+  <span class="tk-c">→</span> wrote tests/kv-admin.custos.yaml        <span class="tk-c">(stub)</span>
+  <span class="tk-c">→</span> wrote .github/workflows/custos.yml
+
+  <span style="color:var(--green)">done.</span> next: edit a stub and run <span style="color:var(--acc)">custos test</span>
+      </div>
+      <h3 class="h3" style="margin-top:22px">What landed in your repo</h3>
+      <div class="code-block" style="font-size:12px;line-height:1.8">
+.custos/
+├── config.yaml            <span class="tk-c"># project-wide settings</span>
+└── ignore                 <span class="tk-c"># rule suppressions with reasons</span>
+tests/
+├── developer.custos.yaml  <span class="tk-c"># stubbed from policies/developer.hcl</span>
+├── ci-bot.custos.yaml
+└── kv-admin.custos.yaml
+.github/
+└── workflows/
+    └── custos.yml         <span class="tk-c"># offline test on PR</span>
+      </div>`
+  },
+  3: {
+    prog: 'Step 3 of 6',
+    title: 'Write your first spec',
+    sub: 'Open the generated stub. custos guessed at the paths — you tell it what the policy should actually allow.',
+    body: () => `
+      <div class="code-block">
+<span class="tk-k">version:</span> <span class="tk-n">1</span>
+<span class="tk-k">policy:</span>  <span class="tk-s">policies/developer.hcl</span>
+<span class="tk-k">identity:</span>
+  <span class="tk-k">display:</span> <span class="tk-s">developer</span>
+
+<span class="tk-k">assert:</span>
+  - <span class="tk-k">name:</span> <span class="tk-s">reads staging secrets</span>
+    <span class="tk-k">path:</span> <span class="tk-s">secret/data/staging/api</span>
+    <span class="tk-k">capabilities:</span> [<span class="tk-s">read</span>]
+    <span class="tk-k">expect:</span> <span class="tk-b">allow</span>
+
+  - <span class="tk-k">name:</span> <span class="tk-s">cannot touch prod</span>
+    <span class="tk-k">path:</span> <span class="tk-s">secret/data/prod/*</span>
+    <span class="tk-k">capabilities:</span> [<span class="tk-s">read</span>, <span class="tk-s">create</span>, <span class="tk-s">update</span>]
+    <span class="tk-k">expect:</span> <span class="tk-b">deny</span>
+      </div>
+      <div style="margin-top:16px;padding:12px 14px;background:var(--elev);border:1px solid var(--border);border-radius:var(--r);font-size:12px;color:var(--fg-3)">
+        <span style="color:var(--acc);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em">tip</span>
+        <div style="margin-top:6px">Start with the <em>deny</em> cases. They're where the production bugs hide. Allow cases tend to be self-evident in code review; denies are not.</div>
+      </div>`
+  },
+  4: {
+    prog: 'Step 4 of 6',
+    title: 'Run it locally',
+    sub: 'Offline mode, no cluster needed. First run compiles HCL; subsequent runs reuse the cached AST.',
+    body: () => `
+      <div class="code-block">
+$ custos test
+  Loaded <span style="color:var(--acc)">2 specs</span> from tests/developer.custos.yaml
+  Mode: <span style="color:var(--blue)">offline</span> · 0 live calls
+
+  <span style="color:var(--green)">✓</span> reads staging secrets
+  <span style="color:var(--red)">✗</span> cannot touch prod
+      <span class="tk-c">expected:</span> deny
+      <span class="tk-c">actual:  </span> read
+      <span class="tk-c">source:  </span> policies/developer.hcl:14
+
+  <span style="color:var(--red)">FAIL</span>  1 passed · 1 failed · 212ms
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <span class="badge">--format json</span>
+        <span class="badge">--filter "prod"</span>
+        <span class="badge">--verbose</span>
+        <span class="badge">--fail-on warn</span>
+      </div>
+      <p class="muted" style="font-size:13px;margin-top:12px">Narrow to one test while iterating: <span class="mono-i">custos test --filter "prod"</span>. Print the decision trace: <span class="mono-i">-v</span>.</p>`
+  },
+  5: {
+    prog: 'Step 5 of 6',
+    title: 'Wire up CI',
+    sub: 'Pick a platform. Each option blocks merge on failing specs; SARIF uploads feed GitHub code scanning.',
+    body: () => `
+      <div class="os-tabs">
+        <div class="os-tab act" data-ci="gh">GitHub Actions</div>
+        <div class="os-tab" data-ci="gl">GitLab CI</div>
+        <div class="os-tab" data-ci="pc">pre-commit</div>
+      </div>
+      <div class="code-block">
+<span class="tk-c"># .github/workflows/custos.yml</span>
+<span class="tk-k">on:</span> [<span class="tk-s">pull_request</span>]
+<span class="tk-k">jobs:</span>
+  <span class="tk-k">test:</span>
+    <span class="tk-k">runs-on:</span> <span class="tk-s">ubuntu-latest</span>
+    <span class="tk-k">steps:</span>
+      - <span class="tk-k">uses:</span> <span class="tk-s">actions/checkout@v4</span>
+      - <span class="tk-k">uses:</span> <span class="tk-s">timkrebs/custos-action@v1</span>
+      - <span class="tk-k">run:</span>  <span class="tk-s">custos test --format junit > report.xml</span>
+      - <span class="tk-k">run:</span>  <span class="tk-s">custos scan policies/ --format sarif > scan.sarif</span>
+      - <span class="tk-k">uses:</span> <span class="tk-s">github/codeql-action/upload-sarif@v3</span>
+        <span class="tk-k">with:</span> { <span class="tk-k">sarif_file:</span> <span class="tk-s">scan.sarif</span> }
+      </div>
+      <p class="muted" style="font-size:13px;margin-top:12px">Full workflows for all three in the <button class="btn btn-sm btn-ghost" onclick="switchTab('ci')">CI integration tab →</button></p>`
+  },
+  6: {
+    prog: 'Step 6 of 6 · optional',
+    title: 'Go live against Vault',
+    sub: 'Flip on live mode to catch drift between the HCL in your repo and what your cluster actually enforces. Works with OIDC, AppRole, or a scoped token.',
+    body: () => `
+      <div class="code-block">
+$ export VAULT_ADDR=<span class="tk-s">https://vault.staging.harbor.dev</span>
+$ custos login oidc --role developer
+  <span class="tk-c">→</span> opened browser...
+  <span class="tk-c">→</span> token stored in ~/.custos/tokens/staging
+
+$ custos test <span class="tk-b">--live</span>
+  Mode: <span style="color:var(--acc)">live</span> · cluster <span class="tk-b">staging</span> · 6 calls
+
+  <span style="color:var(--green)">✓</span> reads staging secrets       <span class="tk-c">offline + live agree</span>
+  <span style="color:var(--green)">✓</span> cannot touch prod           <span class="tk-c">offline + live agree</span>
+  <span style="color:var(--acc)">!</span> ci-bot ttl                  <span class="tk-c">drift: HCL says 1h, cluster 24h</span>
+      </div>
+      <div style="margin-top:20px;padding:18px;border:1px dashed var(--border-strong);border-radius:var(--r);background:var(--panel)">
+        <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--fg-4);margin-bottom:8px">that's it — you're done</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;font-size:12px;color:var(--fg-2)">
+          <div><div style="color:var(--acc);font-family:var(--mono);font-size:11px;margin-bottom:4px">1</div>Run <span class="mono-i">custos drift</span> nightly against each cluster.</div>
+          <div><div style="color:var(--acc);font-family:var(--mono);font-size:11px;margin-bottom:4px">2</div>Graduate warn-level rules to error as your coverage grows.</div>
+          <div><div style="color:var(--acc);font-family:var(--mono);font-size:11px;margin-bottom:4px">3</div>Open an issue — the rule catalog grows with community reports.</div>
+        </div>
+      </div>
+      <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn btn-primary" href="https://github.com/timkrebs/custos" target="_blank" rel="noopener">Star on GitHub</a>
+        <button class="btn">Read the docs</button>
+        <button class="btn btn-ghost">Discord community</button>
+      </div>`
+  }
+};
+
+function renderInstall(n) {
+  const s = INSTALL_STEPS[n];
+  const panel = document.getElementById('instPanel');
+  panel.innerHTML =
+    `<div class="inst-progress">${s.prog}</div>` +
+    `<h2>${s.title}</h2>` +
+    `<p class="p-sub">${s.sub}</p>` +
+    s.body() +
+    `<div class="inst-actions">
+       <div class="inst-nav-meta">${s.prog}</div>
+       <div style="display:flex;gap:8px">
+         ${n > 1 ? `<button class="btn btn-ghost" data-nav="${n - 1}">← Back</button>` : ''}
+         ${n < 6 ? `<button class="btn btn-primary" data-nav="${n + 1}">Continue →</button>` : ''}
+       </div>
+     </div>`;
+  panel.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => goInstall(+b.dataset.nav)));
+  panel.querySelectorAll('.os-tab').forEach(t => t.addEventListener('click', () => {
+    panel.querySelectorAll('.os-tab').forEach(x => x.classList.remove('act'));
+    t.classList.add('act');
+    if (t.dataset.os) swapOs(t.dataset.os);
+    if (t.dataset.ci) swapCi(t.dataset.ci);
+  }));
+}
+
+function swapOs(os) {
+  const el = document.getElementById('os-body'); if (!el) return;
+  const L = {
+    mac: `<span class="tk-c"># Homebrew (recommended)</span>
+$ brew install timkrebs/tap/custos
+
+<span class="tk-c"># Verify</span>
+$ custos version
+custos v0.3.0 (commit 8f2a19c, built 2026-04-18)`,
+    linux: `<span class="tk-c"># Download latest release</span>
+$ curl -sSL https://custos.dev/install.sh | sh
+
+<span class="tk-c"># Or apt (Debian / Ubuntu)</span>
+$ echo "deb [trusted=yes] https://apt.custos.dev /" | sudo tee /etc/apt/sources.list.d/custos.list
+$ sudo apt update && sudo apt install custos`,
+    win: `<span class="tk-c"># Scoop</span>
+&gt; scoop bucket add custos https://github.com/timkrebs/scoop-custos
+&gt; scoop install custos
+
+<span class="tk-c"># Or winget</span>
+&gt; winget install timkrebs.custos`,
+    go: `<span class="tk-c"># Requires Go 1.22+</span>
+$ go install github.com/timkrebs/custos/cmd/custos@latest
+
+<span class="tk-c"># Binary lands in $GOBIN, usually ~/go/bin</span>
+$ custos version`,
+  };
+  el.innerHTML = L[os] + '\n<span class="cp">copy</span>';
+}
+
+function swapCi(ci) {
+  // Only in step 5 — simple body swap
+  const el = document.querySelector('#instPanel .code-block'); if (!el) return;
+  const L = {
+    gh: `<span class="tk-c"># .github/workflows/custos.yml</span>
+<span class="tk-k">on:</span> [<span class="tk-s">pull_request</span>]
+<span class="tk-k">jobs:</span>
+  <span class="tk-k">test:</span>
+    <span class="tk-k">runs-on:</span> <span class="tk-s">ubuntu-latest</span>
+    <span class="tk-k">steps:</span>
+      - <span class="tk-k">uses:</span> <span class="tk-s">actions/checkout@v4</span>
+      - <span class="tk-k">uses:</span> <span class="tk-s">timkrebs/custos-action@v1</span>
+      - <span class="tk-k">run:</span>  <span class="tk-s">custos test --format junit > report.xml</span>
+      - <span class="tk-k">run:</span>  <span class="tk-s">custos scan policies/ --format sarif > scan.sarif</span>
+      - <span class="tk-k">uses:</span> <span class="tk-s">github/codeql-action/upload-sarif@v3</span>
+        <span class="tk-k">with:</span> { <span class="tk-k">sarif_file:</span> <span class="tk-s">scan.sarif</span> }`,
+    gl: `<span class="tk-c"># .gitlab-ci.yml</span>
+<span class="tk-k">custos:</span>
+  <span class="tk-k">image:</span> <span class="tk-s">ghcr.io/timkrebs/custos:0.3.0</span>
+  <span class="tk-k">rules:</span>
+    - <span class="tk-k">if:</span> <span class="tk-s">$CI_PIPELINE_SOURCE == "merge_request_event"</span>
+  <span class="tk-k">script:</span>
+    - <span class="tk-s">custos validate</span>
+    - <span class="tk-s">custos test --format junit > report.xml</span>
+    - <span class="tk-s">custos scan policies/ --format json > scan.json</span>
+  <span class="tk-k">artifacts:</span>
+    <span class="tk-k">reports:</span>
+      <span class="tk-k">junit:</span> <span class="tk-s">report.xml</span>`,
+    pc: `<span class="tk-c"># .pre-commit-config.yaml</span>
+<span class="tk-k">repos:</span>
+  - <span class="tk-k">repo:</span> <span class="tk-s">https://github.com/timkrebs/custos</span>
+    <span class="tk-k">rev:</span> <span class="tk-s">v0.3.0</span>
+    <span class="tk-k">hooks:</span>
+      - <span class="tk-k">id:</span> <span class="tk-s">custos-validate</span>
+      - <span class="tk-k">id:</span> <span class="tk-s">custos-test</span>
+        <span class="tk-k">files:</span> <span class="tk-s">"^(policies|tests)/"</span>`,
+  };
+  el.innerHTML = L[ci];
+}
+
+function goInstall(n) {
+  document.querySelectorAll('.inst-stepitem').forEach(el => {
+    const step = +el.dataset.step;
+    el.classList.remove('active','done');
+    if (step < n) el.classList.add('done');
+    if (step === n) el.classList.add('active');
+  });
+  renderInstall(n);
+}
+document.querySelectorAll('.inst-stepitem').forEach(el => el.addEventListener('click', () => goInstall(+el.dataset.step)));
+renderInstall(1);
+</script>
+</body>
+</html>
